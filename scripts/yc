@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+import term
+from getkey import getkey, keys
+import sys
+import os
+import pyperclip
+from pathlib import Path
+import pkg_resources
+import yescommander as yc
+
+_CONFIG_PATH = Path("~/.config/yescommander/").expanduser()
+sys.path.insert(0, str(_CONFIG_PATH))
+
+
+def init_config_folder():
+    import os
+
+    if not _CONFIG_PATH.exists():
+        _CONFIG_PATH.mkdir(parents=True, exist_ok=True)
+    config_file = _CONFIG_PATH / "yc_rc.py"
+
+    if not config_file.exists():
+        init_cfg_path = pkg_resources.resource_filename(
+            "yescommander", "example/rc.py"
+        )
+        print(f"==== initalize {str(config_file)} ====")
+        with open(init_cfg_path, "r") as fp:
+            print(fp.read())
+        os.system(f"cp {init_cfg_path} {config_file}")
+    exit()
+
+
+try:
+    import yc_rc
+except ModuleNotFoundError:
+    init_config_folder()
+
+
+_COMMANDS = yc_rc.commander
+
+
+def update(listbox, text):
+    listbox.commands = _COMMANDS.match(text.split(" "))
+
+
+def execute(choices):
+    choices.commands[choices.getSelected()].result()
+    exit()
+
+
+def copy(choices):
+    pyperclip.copy(choices.commands[choices.getSelected()].copy())
+    exit()
+
+
+def main_loop():
+    while True:
+        key = getkey()
+        if key == keys.ENTER:
+            # term.pos(*window.origin)
+            window.clear()
+            execute(choices)
+        elif key in ["\t", keys.DOWN, b"\x0e".decode()]:
+            choices.selectNext()
+        elif key in [b"\x1b[Z".decode(), keys.UP, b"\x10".decode()]:
+            choices.selectPrevious()
+        elif key == b"\x04".decode():
+            copy(choices)
+        else:
+            textbox.key(key)
+            choices._selected = 0
+            update(choices, textbox.text)
+        textbox.draw()
+        term.saveCursor()
+        listbox.draw()
+        term.restoreCursor()
+
+
+height = 11
+window = yc.Window(height)
+
+textbox = yc.TextBox(window, 0)
+choices = yc.ListBoxData()
+listbox = yc.ListBox(choices, window, 1, height - 1)
+
+try:
+    main_loop()
+except KeyboardInterrupt:
+    pass
