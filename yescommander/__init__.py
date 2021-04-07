@@ -26,7 +26,7 @@ class BaseCommand:
     def __contains__(self, input_words):
         raise NotImplementedError()
 
-    def copy_clipboard(self):  # This is not copy 
+    def copy_clipboard(self):  # This is not copy
         raise NotImplementedError()
 
     def preview(self):
