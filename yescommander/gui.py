@@ -6,7 +6,8 @@ import termios
 from getkey import keys
 from tcolorpy import tcolor
 
-__all__ = ["Window", "TextBox", "ListBox", "ListBoxData"]
+__all__ = ["Window", "TextBox", "ListBox", "ListBoxData", "LabelBox", "StyledStr"]
+
 
 def getpos():
     buf = ""
@@ -44,6 +45,7 @@ class Window:
             print()
         term.up(height)
         self.origin = getpos()
+        self._widgets = []
 
     def clear(self):
         term.pos(*self.origin)
@@ -52,12 +54,21 @@ class Window:
             term.down(1)
         term.pos(*self.origin)
 
+    def addWidget(self, widget):
+        self._widgets.append(widget)
+
+    def draw(self):
+        self.clear()
+        for w in self._widgets:
+            w.draw()
+
 
 class TextBox:
     def __init__(self, parent: Window, line):
         self.text = ""
         self._line = line + parent.origin[0]
         self.parent = parent
+        self.parent.addWidget(self)
 
     def draw(self):
         term.pos(self._line, 0)
@@ -97,14 +108,79 @@ class ListBoxData:
     def __getitem__(self, idx):
         return self.commands[idx]
 
+    def getSelection(self):
+        return self.commands[self._selected]
+
+
+class StyledStr:
+    def __init__(self, s, color=None, bg_color=None, styles=None):
+        self.s = s
+        self.color = color
+        self.bg_color = bg_color
+        styles = styles if styles is not None else []
+        self.bold = "bold" in styles
+
+    @property
+    def styles(self):
+        styles = []
+
+        if self.bold:
+            styles.append("bold")
+        return styles
+
+    def render(self):
+        return tcolor(
+            self.s, color=self.color, bg_color=self.bg_color, styles=self.styles
+        )
+
+    def splitlines(self):
+        return [
+            StyledStr(s, color=self.color, bg_color=self.bg_color, styles=self.styles)
+            for s in self.s.splitlines()
+        ]
+
+
+class LabelBox:
+    def __init__(self, parent, origin, width, height):
+        self.parent = parent
+        self.parent.addWidget(self)
+        self.origin = origin
+        self.width = width
+        self.height = height
+        self.text = []
+        self.bg_color = "#DDDDDD"
+
+    def setText(self, text):
+        self.text = text
+
+    def clear(self):
+        for i in range(self.height):
+            term.pos(self.origin[0] + i, self.origin[1])
+            term.write(tcolor(" " * self.width, bg_color=self.bg_color))
+
+    def draw(self):
+        self.clear()
+        term.pos(*self.origin)
+        line = self.origin[0]
+        for t in self.text:
+            if isinstance(t, str):
+                t = StyledStr(t, bg_color=self.bg_color)
+            for l in t.splitlines():
+                term.pos(line, self.origin[1])
+                l.bg_color = self.bg_color
+                term.write(l.render())
+                line += 1
+
 
 class ListBox:
     MARKER = "●"
+
     def __init__(self, listbox_data, parent: Window, line, height):
         self._line = line + parent.origin[0]
         self._data = listbox_data
         self.height = height
         self.parent = parent
+        self.parent.addWidget(self)
 
     def _clear(self):
         term.pos(self._line - 1, 0)
@@ -130,35 +206,8 @@ class ListBox:
             term.down(1)
             if self._data.isSelected(i):
                 term.write(
-                    f"\r" + tcolor(f"{self.MARKER} {cmd.str_command()}", styles=["bold"])
+                    f"\r"
+                    + tcolor(f"{self.MARKER} {cmd.str_command()}", styles=["bold"])
                 )
             else:
                 term.write(f"\r{self.MARKER} {cmd.str_command()}")
-        if len(self._data) > 0:
-            pv = self._data[selectedIndex].preview()
-            line = self._line
-            shift_l = 50
-            width = 50
-            bg_color = "#CCCCCC"
-            for l in pv['cmd'].splitlines():
-                term.pos(line, shift_l)
-                term.write(tcolor(" "*width, bg_color=bg_color))
-                term.pos(line, shift_l)
-                term.write(tcolor(l, bg_color=bg_color))
-                line += 1
-            if pv.get('description', '') != '':
-                term.pos(line, shift_l)
-                term.write(tcolor('description'.ljust(width) + '\n', bg_color=bg_color, color='green'))
-                line += 1
-                for l in pv['description'].splitlines():
-                    term.pos(line, shift_l)
-                    term.write(tcolor(" "*width, bg_color=bg_color))
-                    term.pos(line, shift_l)
-                    term.write(tcolor(l, bg_color=bg_color))
-                    line += 1
-            if len(pv.get('keywords', [])) > 0:
-                term.pos(line, shift_l)
-                term.write(tcolor("keywords".ljust(width) + "\n", bg_color=bg_color, color='green'))
-                line += 1
-                term.pos(line, shift_l)
-                term.write(tcolor(", ".join(pv['keywords']), bg_color=bg_color))

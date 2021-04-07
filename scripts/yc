@@ -20,9 +20,7 @@ def init_config_folder():
     config_file = _CONFIG_PATH / "yc_rc.py"
 
     if not config_file.exists():
-        init_cfg_path = pkg_resources.resource_filename(
-            "yescommander", "example/rc.py"
-        )
+        init_cfg_path = pkg_resources.resource_filename("yescommander", "example/rc.py")
         print(f"==== initalize {str(config_file)} ====")
         with open(init_cfg_path, "r") as fp:
             print(fp.read())
@@ -53,6 +51,14 @@ def copy(choices):
     exit()
 
 
+def preview_to_text(pv):
+    ans = []
+    for k, v in pv.items():
+        ans.append(yc.StyledStr(k, color="green"))
+        ans.append(v)
+    return ans
+
+
 def main_loop():
     while True:
         key = getkey()
@@ -73,15 +79,20 @@ def main_loop():
         textbox.draw()
         term.saveCursor()
         listbox.draw()
+        labelbox.setText(preview_to_text(choices.getSelection().preview()))
+        labelbox.draw()
         term.restoreCursor()
 
 
-height = 11
+height = 15
 window = yc.Window(height)
 
 textbox = yc.TextBox(window, 0)
 choices = yc.ListBoxData()
 listbox = yc.ListBox(choices, window, 1, height - 1)
+labelbox = yc.LabelBox(
+    window, (window.origin[0], window.origin[1] + 50), 50, window.height
+)
 
 try:
     main_loop()

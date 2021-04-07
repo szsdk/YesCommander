@@ -9,17 +9,19 @@ from pathlib import Path
 from .gui import *
 
 __all__ = [
-        'Command',
-        'TextFile',
-        'CommandRegister',
-        'BaseCommand',
-        ]
+    "Command",
+    "TextFile",
+    "CommandRegister",
+    "BaseCommand",
+]
 
 
 def inject_command(cmd):
     import fcntl, termios
+
     for c in cmd:
         fcntl.ioctl(sys.stdin, termios.TIOCSTI, c)
+
 
 class CommandRegister(type):
     register = set()
@@ -32,16 +34,16 @@ class CommandRegister(type):
 
     @staticmethod
     def convert(name):
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 class BaseCommand(metaclass=CommandRegister):
-    def __init__(self, key_words, command, description):
-        if not isinstance(key_words, list):
-            key_words = [key_words]
-        self.key_words   = key_words
-        self.command     = command
+    def __init__(self, keywords, command, description):
+        if not isinstance(keywords, list):
+            keywords = [keywords]
+        self.keywords = keywords
+        self.command = command
         self.description = description
 
     def __contains__(self, input_words):
@@ -49,7 +51,7 @@ class BaseCommand(metaclass=CommandRegister):
             input_words = [input_words]
         for k in input_words:
             findQ = False
-            for kw in self.key_words:
+            for kw in self.keywords:
                 if k in kw:
                     findQ = True
             if findQ or (k in self.command):
@@ -63,18 +65,26 @@ class BaseCommand(metaclass=CommandRegister):
     copy = str_command
 
     def preview(self):
-        return {'cmd': self.str_command(), "description":self.description, "key words": self.key_words}
+        ans = {"command": self.str_command()}
+        if len(self.description) > 0:
+            ans["description"] = self.description
+        if len(self.keywords) > 0:
+            ans["keywords"] = " ".join(self.keywords)
+        return ans
 
     def result(self):
         raise NotImplementedError
+
 
 def escape_all(s):
     s = "\\".join(s)
     return f"\\{s}"
 
+
 class Command(BaseCommand):
     def result(self):
         inject_command(self.command)
+
 
 def _from_tuple(t, *args, **kargs):
     if len(t) == 2:
@@ -86,9 +96,9 @@ def _from_tuple(t, *args, **kargs):
 
 
 def _from_dict(dic):
-    kws = dic.get('keywords', [])
-    cmd = dic.get('command')
-    des = dic.get('description', '')
+    kws = dic.get("keywords", [])
+    cmd = dic.get("command")
+    des = dic.get("description", "")
     return Command(kws, cmd, des)
 
 
@@ -100,13 +110,18 @@ def command(src, *args, **kargs):
 
 
 class TextFile(BaseCommand):
-    editor = 'vim %s'
-    def __init__(self, key_words, filename, description, *args, **kargs):
-        super(TextFile, self).__init__(key_words, str(filename), description,
-                )
+    editor = "vim %s"
+
+    def __init__(self, keywords, filename, description, *args, **kargs):
+        super(TextFile, self).__init__(
+            keywords,
+            str(filename),
+            description,
+        )
 
     def result(self):
         os.system(self.editor % self.command)
+
 
 class RunCommand(BaseCommand):
     def result(self):
@@ -125,9 +140,11 @@ class RunCommand(BaseCommand):
     def copy(self):
         return ""
 
+
 class BaseCommander:
     def match(self, keywords):
         raise NotImplementedError()
+
 
 class Commander(BaseCommander):
     def __init__(self, commands):
@@ -145,6 +162,7 @@ class Commander(BaseCommander):
 
     def append(self, cmd):
         self._commands.append(cmd)
+
 
 def commander(input_cmds):
     "initialize `_COMMANDS` list"
@@ -164,12 +182,12 @@ def commander(input_cmds):
 
 class CmdCommander(BaseCommander):
     def __init__(self, folder):
-        self._cmds = {p.stem:p for p in Path(folder).rglob("*.json")}
+        self._cmds = {p.stem: p for p in Path(folder).rglob("*.json")}
 
     def match(self, keywords):
         if keywords[0] not in self._cmds:
             return []
-        
+
         with self._cmds[keywords[0]].open() as fp:
             jcmds = json.load(fp)
         ans = []
