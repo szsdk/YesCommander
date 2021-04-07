@@ -109,6 +109,8 @@ class ListBoxData:
         return self.commands[idx]
 
     def getSelection(self):
+        if len(self.commands) == 0:
+            return None
         return self.commands[self._selected]
 
 
@@ -132,6 +134,9 @@ class StyledStr:
         return tcolor(
             self.s, color=self.color, bg_color=self.bg_color, styles=self.styles
         )
+
+    def __str__(self):
+        return self.render()
 
     def splitlines(self):
         return [

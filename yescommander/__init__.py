@@ -11,7 +11,6 @@ from .gui import *
 __all__ = [
     "Command",
     "TextFile",
-    "CommandRegister",
     "BaseCommand",
 ]
 
@@ -23,22 +22,21 @@ def inject_command(cmd):
         fcntl.ioctl(sys.stdin, termios.TIOCSTI, c)
 
 
-class CommandRegister(type):
-    register = set()
+class BaseCommand:
+    def __contains__(self, input_words):
+        raise NotImplementedError()
 
-    def __new__(cls, name, bases, dct):
-        x = super().__new__(cls, name, bases, dct)
-        x._snake_name = CommandRegister.convert(name)
-        cls.register.add(x)
-        return x
+    def copy_clipboard(self):  # This is not copy 
+        raise NotImplementedError()
 
-    @staticmethod
-    def convert(name):
-        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
-        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+    def preview(self):
+        raise NotImplementedError()
+
+    def result(self):
+        raise NotImplementedError()
 
 
-class BaseCommand(metaclass=CommandRegister):
+class Command(BaseCommand):
     def __init__(self, keywords, command, description):
         if not isinstance(keywords, list):
             keywords = [keywords]
@@ -62,7 +60,8 @@ class BaseCommand(metaclass=CommandRegister):
     def str_command(self):
         return self.command
 
-    copy = str_command
+    def copy_clipboard(self):
+        return self.str_command()
 
     def preview(self):
         ans = {"command": self.str_command()}
@@ -72,16 +71,6 @@ class BaseCommand(metaclass=CommandRegister):
             ans["keywords"] = " ".join(self.keywords)
         return ans
 
-    def result(self):
-        raise NotImplementedError
-
-
-def escape_all(s):
-    s = "\\".join(s)
-    return f"\\{s}"
-
-
-class Command(BaseCommand):
     def result(self):
         inject_command(self.command)
 
@@ -109,7 +98,7 @@ def command(src, *args, **kargs):
         return _from_tuple(src, *args, **kargs)
 
 
-class TextFile(BaseCommand):
+class TextFile(Command):
     editor = "vim %s"
 
     def __init__(self, keywords, filename, description, *args, **kargs):
@@ -123,7 +112,7 @@ class TextFile(BaseCommand):
         os.system(self.editor % self.command)
 
 
-class RunCommand(BaseCommand):
+class RunCommand(Command):
     def result(self):
         if isinstance(self.command, str):
             os.system(self.command)
@@ -137,7 +126,7 @@ class RunCommand(BaseCommand):
             ans = self.command.__doc__
         return ans.splitlines()[0]
 
-    def copy(self):
+    def copy_clipboard(self):
         return ""
 
 

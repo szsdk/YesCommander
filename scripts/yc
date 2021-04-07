@@ -47,7 +47,7 @@ def execute(choices):
 
 
 def copy(choices):
-    pyperclip.copy(choices.commands[choices.getSelected()].copy())
+    pyperclip.copy(choices.commands[choices.getSelected()].copy_clipboard())
     exit()
 
 
@@ -79,7 +79,10 @@ def main_loop():
         textbox.draw()
         term.saveCursor()
         listbox.draw()
-        labelbox.setText(preview_to_text(choices.getSelection().preview()))
+        if selection := choices.getSelection():
+            labelbox.setText(preview_to_text(selection.preview()))
+        else:
+            labelbox.setText([])
         labelbox.draw()
         term.restoreCursor()
 
