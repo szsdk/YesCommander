@@ -39,8 +39,9 @@ def getpos():
 
 
 class Window:
-    def __init__(self, height):
+    def __init__(self, height, width):
         self.height = height
+        self.width = width
         for _ in range(height):
             print()
         term.up(height)
@@ -184,6 +185,7 @@ class ListBox:
         self._line = line + parent.origin[0]
         self._data = listbox_data
         self.height = height
+        self.width = parent.width
         self.parent = parent
         self.parent.addWidget(self)
 
@@ -209,10 +211,10 @@ class ListBox:
         for i in range(start, end):
             cmd = self._data[i]
             term.down(1)
+            s = f"{self.MARKER} {cmd.str_command()}"
+            if len(s) > self.width:
+                s = s[:self.width]
             if self._data.isSelected(i):
-                term.write(
-                    f"\r"
-                    + tcolor(f"{self.MARKER} {cmd.str_command()}", styles=["bold"])
-                )
+                term.write(f'\r{tcolor(s, styles=["bold"])}')
             else:
-                term.write(f"\r{self.MARKER} {cmd.str_command()}")
+                term.write(f"\r{s}")

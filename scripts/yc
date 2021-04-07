@@ -63,7 +63,6 @@ def main_loop():
     while True:
         key = getkey()
         if key == keys.ENTER:
-            # term.pos(*window.origin)
             window.clear()
             execute(choices)
         elif key in ["\t", keys.DOWN, b"\x0e".decode()]:
@@ -87,15 +86,33 @@ def main_loop():
         term.restoreCursor()
 
 
-height = 15
-window = yc.Window(height)
+sizey, sizex = term.getSize()
+if sizey < 20 and sizex < 40:
+    print("Current window is too small")
+    exit()
 
-textbox = yc.TextBox(window, 0)
-choices = yc.ListBoxData()
-listbox = yc.ListBox(choices, window, 1, height - 1)
-labelbox = yc.LabelBox(
-    window, (window.origin[0], window.origin[1] + 50), 50, window.height
-)
+if sizex > 80:
+    height = 15
+    label_height = height - 1
+    window = yc.Window(height, sizex)
+
+    textbox = yc.TextBox(window, 0)
+    choices = yc.ListBoxData()
+    listbox = yc.ListBox(choices, window, 1, height - 1)
+    labelbox = yc.LabelBox(
+        window, (window.origin[0] + 1, window.origin[1] + sizex // 2), (sizex - sizex//2), label_height
+    )
+else:
+    height = 20 
+    label_height = 8
+    window = yc.Window(height, sizex)
+
+    textbox = yc.TextBox(window, 0)
+    choices = yc.ListBoxData()
+    listbox = yc.ListBox(choices, window, 1, height - 1 - label_height)
+    labelbox = yc.LabelBox(
+        window, (window.origin[0] + listbox.height + 1, window.origin[1]), sizex, label_height 
+    )
 
 try:
     main_loop()
