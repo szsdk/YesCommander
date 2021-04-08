@@ -186,9 +186,12 @@ def commander(input_cmds):
 
 class CmdCommander(BaseCommander):
     def __init__(self, folder):
-        self._cmds = {p.stem: p for p in Path(folder).rglob("*.json")}
+        self._cmds = None
+        self._folder = folder
 
     def match(self, keywords):
+        if self._cmds is None:
+            self._cmds = {p.stem: p for p in Path(self._folder).rglob("*.json")}
         if keywords[0] not in self._cmds:
             return []
 
