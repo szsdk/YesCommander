@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from tcolorpy import tcolor
 
 __all__ = [
     "BaseCommand",
@@ -16,6 +17,7 @@ __all__ = [
     "theme",
 ]
 
+
 class Theme(dict):
     """dot.notation access to dictionary attributes"""
 
@@ -23,11 +25,14 @@ class Theme(dict):
     __setattr__ = dict.__setitem__  # type: ignore
     __delattr__ = dict.__delitem__  # type: ignore
 
+
 theme = Theme()
 theme.detail = Theme()
 theme.detail.bg_color = "#DDDDDD"
+theme.highlight_color = "black"
 theme.detail.title_color = "green"
-theme.default_marker =  "●"
+theme.default_marker = "●"
+theme.prompt = "▶ "
 
 
 def inject_command(cmd):

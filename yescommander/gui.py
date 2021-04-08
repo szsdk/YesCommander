@@ -13,6 +13,7 @@ import textwrap
 
 __all__ = ["Window", "TextBox", "ListBox", "ListBoxData", "LabelBox"]
 
+
 def getpos():
     buf = ""
     stdin = sys.stdin.fileno()
@@ -78,6 +79,7 @@ class TextBox:
     def draw(self):
         term.pos(self._line, 0)
         term.clearLine()
+        term.write(theme.prompt)
         term.write(self.text)
 
     def key(self, key):
@@ -144,7 +146,9 @@ class LabelBox:
         for t in self.text:
             if isinstance(t, str):
                 t = ss.StyledStr(t, bg_color=self.bg_color)
-            for l in chain.from_iterable(map(partial(ss.wrap, width=self.width), t.splitlines())):
+            for l in chain.from_iterable(
+                map(partial(ss.wrap, width=self.width), t.splitlines())
+            ):
                 term.pos(line, self.origin[1])
                 l.bg_color = self.bg_color
                 term.write(l.render())
@@ -152,9 +156,7 @@ class LabelBox:
 
 
 class ListBox:
-
     def __init__(self, listbox_data, parent: Window, origin, height, width):
-        # self._line = line + parent.origin[0]
         self.origin = (origin[0] + parent.origin[0], origin[1] + parent.origin[1])
         self._data = listbox_data
         self.height = height
@@ -184,9 +186,10 @@ class ListBox:
         for i in range(start, end):
             cmd = self._data[i]
             term.down(1)
-            marker = cmd.marker if hasattr(cmd, "marker") else theme.default_marker 
+            marker = cmd.marker if hasattr(cmd, "marker") else theme.default_marker
             s = textwrap.shorten(f"{cmd.str_command()}", self.width)
+            term.write(f"\r{marker} ")
             if self._data.isSelected(i):
-                term.write(f'\r{marker} {tcolor(s, styles=["bold"])}')
+                term.write(tcolor(s, color=theme.highlight_color, styles=["bold"]))
             else:
-                term.write(f"\r{marker} {s}")
+                term.write(s)

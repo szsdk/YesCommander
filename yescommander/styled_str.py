@@ -1,6 +1,7 @@
 import textwrap
 from tcolorpy import tcolor
 
+
 class StyledStr:
     def __init__(self, s, color=None, bg_color=None, styles=None):
         self.s = s
@@ -30,14 +31,13 @@ class StyledStr:
 
 
 def styled_str_from(text, base):
-    return StyledStr(text, 
-            color=base.color,
-            bg_color=base.bg_color,
-            styles=base.styles)
+    return StyledStr(text, color=base.color, bg_color=base.bg_color, styles=base.styles)
 
 
 def wrap(text: StyledStr, width=70, *args, **kargs):
-    return [styled_str_from(t, text, *args, **kargs) for t in textwrap.wrap(text.s, width)]
+    return [
+        styled_str_from(t, text, *args, **kargs) for t in textwrap.wrap(text.s, width)
+    ]
 
 
 def shorten(text: StyledStr, width, **kargs):

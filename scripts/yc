@@ -58,10 +58,23 @@ def preview_to_text(pv):
         ans.append(v)
     return ans
 
+def draw():
+    textbox.draw()
+    term.saveCursor()
+    listbox.draw()
+    if selection := choices.getSelection():
+        labelbox.setText(preview_to_text(selection.preview()))
+    else:
+        labelbox.setText([])
+    labelbox.draw()
+    term.restoreCursor()
+
 
 def main_loop():
+    draw()
     while True:
         key = getkey()
+        # TODO: Add more shortcuts
         if key == keys.ENTER:
             win.clear()
             execute(choices)
@@ -75,15 +88,8 @@ def main_loop():
             textbox.key(key)
             choices._selected = 0
             update(choices, textbox.text)
-        textbox.draw()
-        term.saveCursor()
-        listbox.draw()
-        if selection := choices.getSelection():
-            labelbox.setText(preview_to_text(selection.preview()))
-        else:
-            labelbox.setText([])
-        labelbox.draw()
-        term.restoreCursor()
+        draw()
+
 
 
 sizey, sizex = term.getSize()
