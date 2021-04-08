@@ -6,5 +6,5 @@ setup(
     author="szsdk",
     packages=["yescommander"],
     scripts=["scripts/yc"],
-    install_requires=["py-term", "tcolorpy"],
+    install_requires=["py-term", "tcolorpy", "getkey", "pyperclip"],
 )
