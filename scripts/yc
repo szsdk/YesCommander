@@ -54,7 +54,7 @@ def copy(choices):
 def preview_to_text(pv):
     ans = []
     for k, v in pv.items():
-        ans.append(yc.StyledStr(k, color="green"))
+        ans.append(yc.StyledStr(k, color=yc.theme.detail.title_color))
         ans.append(v)
     return ans
 
@@ -63,7 +63,7 @@ def main_loop():
     while True:
         key = getkey()
         if key == keys.ENTER:
-            window.clear()
+            win.clear()
             execute(choices)
         elif key in ["\t", keys.DOWN, b"\x0e".decode()]:
             choices.selectNext()
@@ -94,24 +94,24 @@ if sizey < 20 and sizex < 40:
 if sizex > 80:
     height = 15
     label_height = height - 1
-    window = yc.Window(height, sizex)
+    win = yc.Window(height, sizex)
 
-    textbox = yc.TextBox(window, 0)
+    textbox = yc.TextBox(win, 0)
     choices = yc.ListBoxData()
-    listbox = yc.ListBox(choices, window, 1, height - 1)
+    listbox = yc.ListBox(choices, win, (1, 0), win.height - 1, width=win.width//2)
     labelbox = yc.LabelBox(
-        window, (window.origin[0] + 1, window.origin[1] + sizex // 2), (sizex - sizex//2), label_height
+        win, (win.origin[0] + 1, win.origin[1] + win.width // 2), (win.width - win.width//2), label_height
     )
 else:
     height = 20 
     label_height = 8
-    window = yc.Window(height, sizex)
+    win = yc.Window(height, sizex)
 
-    textbox = yc.TextBox(window, 0)
+    textbox = yc.TextBox(win, 0)
     choices = yc.ListBoxData()
-    listbox = yc.ListBox(choices, window, 1, height - 1 - label_height)
+    listbox = yc.ListBox(choices, win, (1,0), height - 1 - label_height, width=win.width)
     labelbox = yc.LabelBox(
-        window, (window.origin[0] + listbox.height + 1, window.origin[1]), sizex, label_height 
+        win, (win.origin[0] + listbox.height + 1, win.origin[1]), win.width, label_height 
     )
 
 try:

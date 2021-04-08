@@ -5,9 +5,13 @@ import term
 import termios
 from getkey import keys
 from tcolorpy import tcolor
+from itertools import chain
+from functools import partial
+from . import styled_str as ss
+from ._core import theme
+import textwrap
 
-__all__ = ["Window", "TextBox", "ListBox", "ListBoxData", "LabelBox", "StyledStr"]
-
+__all__ = ["Window", "TextBox", "ListBox", "ListBoxData", "LabelBox"]
 
 def getpos():
     buf = ""
@@ -115,37 +119,6 @@ class ListBoxData:
         return self.commands[self._selected]
 
 
-class StyledStr:
-    def __init__(self, s, color=None, bg_color=None, styles=None):
-        self.s = s
-        self.color = color
-        self.bg_color = bg_color
-        styles = styles if styles is not None else []
-        self.bold = "bold" in styles
-
-    @property
-    def styles(self):
-        styles = []
-
-        if self.bold:
-            styles.append("bold")
-        return styles
-
-    def render(self):
-        return tcolor(
-            self.s, color=self.color, bg_color=self.bg_color, styles=self.styles
-        )
-
-    def __str__(self):
-        return self.render()
-
-    def splitlines(self):
-        return [
-            StyledStr(s, color=self.color, bg_color=self.bg_color, styles=self.styles)
-            for s in self.s.splitlines()
-        ]
-
-
 class LabelBox:
     def __init__(self, parent, origin, width, height):
         self.parent = parent
@@ -154,7 +127,7 @@ class LabelBox:
         self.width = width
         self.height = height
         self.text = []
-        self.bg_color = "#DDDDDD"
+        self.bg_color = theme.detail.bg_color
 
     def setText(self, text):
         self.text = text
@@ -170,8 +143,8 @@ class LabelBox:
         line = self.origin[0]
         for t in self.text:
             if isinstance(t, str):
-                t = StyledStr(t, bg_color=self.bg_color)
-            for l in t.splitlines():
+                t = ss.StyledStr(t, bg_color=self.bg_color)
+            for l in chain.from_iterable(map(partial(ss.wrap, width=self.width), t.splitlines())):
                 term.pos(line, self.origin[1])
                 l.bg_color = self.bg_color
                 term.write(l.render())
@@ -179,25 +152,25 @@ class LabelBox:
 
 
 class ListBox:
-    MARKER = "●"
 
-    def __init__(self, listbox_data, parent: Window, line, height):
-        self._line = line + parent.origin[0]
+    def __init__(self, listbox_data, parent: Window, origin, height, width):
+        # self._line = line + parent.origin[0]
+        self.origin = (origin[0] + parent.origin[0], origin[1] + parent.origin[1])
         self._data = listbox_data
         self.height = height
-        self.width = parent.width
+        self.width = width
         self.parent = parent
         self.parent.addWidget(self)
 
     def _clear(self):
-        term.pos(self._line - 1, 0)
+        term.pos(self.origin[0] - 1, 0)
         for i in range(self.height):
             term.down(1)
             term.clearLine()
 
     def draw(self):
         self._clear()
-        term.pos(self._line - 1, 0)
+        term.pos(self.origin[0] - 1, 0)
         # get range
         selectedIndex = self._data.getSelected()
         halfHeight = self.height // 2
@@ -211,10 +184,9 @@ class ListBox:
         for i in range(start, end):
             cmd = self._data[i]
             term.down(1)
-            s = f"{self.MARKER} {cmd.str_command()}"
-            if len(s) > self.width:
-                s = s[:self.width]
+            marker = cmd.marker if hasattr(cmd, "marker") else theme.default_marker 
+            s = textwrap.shorten(f"{cmd.str_command()}", self.width)
             if self._data.isSelected(i):
-                term.write(f'\r{tcolor(s, styles=["bold"])}')
+                term.write(f'\r{marker} {tcolor(s, styles=["bold"])}')
             else:
-                term.write(f"\r{s}")
+                term.write(f"\r{marker} {s}")
