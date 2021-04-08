@@ -33,6 +33,9 @@ theme.highlight_color = "black"
 theme.detail.title_color = "green"
 theme.default_marker = "●"
 theme.prompt = "▶ "
+theme.listbox = Theme()
+theme.listbox.ratio = 0.4
+# TODO: Add more ui size control parameters
 
 
 def inject_command(cmd):

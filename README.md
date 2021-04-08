@@ -26,7 +26,7 @@ sc ls
 
 Input 
 ```
-sc
+yc
 ```
 in the command line directly.
 

@@ -104,9 +104,9 @@ if sizex > 80:
 
     textbox = yc.TextBox(win, 0)
     choices = yc.ListBoxData()
-    listbox = yc.ListBox(choices, win, (1, 0), win.height - 1, width=win.width//2)
+    listbox = yc.ListBox(choices, win, (1, 0), win.height - 1, width=int(win.width * yc.theme.listbox.ratio))
     labelbox = yc.LabelBox(
-        win, (win.origin[0] + 1, win.origin[1] + win.width // 2), (win.width - win.width//2), label_height
+        win, (win.origin[0] + 1, win.origin[1] + listbox.width), (win.width - listbox.width), label_height
     )
 else:
     height = 20 
