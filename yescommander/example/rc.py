@@ -9,3 +9,4 @@ commands = [
     (["change"], "chown user:group file"),
     yc.Command([], "vim -u NONE", "open vim without vimrc"),
 ]
+commander = yc.commander(commands)

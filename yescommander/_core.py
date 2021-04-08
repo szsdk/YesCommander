@@ -2,7 +2,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from tcolorpy import tcolor
 
 __all__ = [
     "BaseCommand",
@@ -28,9 +27,9 @@ class Theme(dict):
 
 theme = Theme()
 theme.detail = Theme()
-theme.detail.bg_color = "#DDDDDD"
-theme.highlight_color = "black"
-theme.detail.title_color = "green"
+theme.detail.bg_color = None
+theme.highlight_color = None
+theme.detail.title_color = None
 theme.default_marker = "●"
 theme.prompt = "▶ "
 theme.listbox = Theme()
