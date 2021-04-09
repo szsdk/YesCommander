@@ -140,7 +140,6 @@ class LabelBox:
             term.write(tcolor(" " * self.width, bg_color=self.bg_color))
 
     def draw(self):
-        # self.clear()
         term.pos(*self.origin)
         line = self.origin[0]
         for t in self.text:
@@ -150,9 +149,10 @@ class LabelBox:
                 map(partial(ss.wrap, width=self.width), t.splitlines())
             ):
                 term.pos(line, self.origin[1])
+                term.write(tcolor(" " * self.width, bg_color=self.bg_color))
                 l.bg_color = self.bg_color
+                term.pos(line, self.origin[1])
                 term.write(str(l))
-                term.write(tcolor(" " * (self.width - len(t)), bg_color=self.bg_color))
                 line += 1
         for i in range(line, self.origin[0] + self.height):
             term.pos(i, self.origin[1])
