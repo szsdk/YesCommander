@@ -75,14 +75,15 @@ def main_loop():
     while True:
         key = getkey()
         # TODO: Add more shortcuts
+        # TODO: Chinese input
         if key == keys.ENTER:
             win.clear()
             execute(choices)
         elif key in ["\t", keys.DOWN, b"\x0e".decode()]:
             choices.selectNext()
-        elif key in [b"\x1b[Z".decode(), keys.UP, b"\x10".decode()]:
+        elif key in ["\x1b[Z", keys.UP, b"\x10".decode()]:
             choices.selectPrevious()
-        elif key == b"\x04".decode():
+        elif key == "\x04": # Ctrl + d
             copy(choices)
         else:
             textbox.key(key)

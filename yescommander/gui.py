@@ -83,7 +83,7 @@ class TextBox:
         term.write(self.text)
 
     def key(self, key):
-        if key == keys.BACKSPACE:
+        if key in [keys.BACKSPACE, "\x08"]:  # \x08
             if len(self.text) > 0:
                 self.text = self.text[:-1]
         else:
@@ -140,7 +140,7 @@ class LabelBox:
             term.write(tcolor(" " * self.width, bg_color=self.bg_color))
 
     def draw(self):
-        self.clear()
+        # self.clear()
         term.pos(*self.origin)
         line = self.origin[0]
         for t in self.text:
@@ -151,8 +151,12 @@ class LabelBox:
             ):
                 term.pos(line, self.origin[1])
                 l.bg_color = self.bg_color
-                term.write(l.render())
+                term.write(str(l))
+                term.write(tcolor(" " * (self.width - len(t)), bg_color=self.bg_color))
                 line += 1
+        for i in range(line, self.origin[0] + self.height):
+            term.pos(i, self.origin[1])
+            term.write(tcolor(" " * self.width, bg_color=self.bg_color))
 
 
 class ListBox:

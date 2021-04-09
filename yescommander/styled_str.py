@@ -26,6 +26,9 @@ class StyledStr:
     def __str__(self):
         return self.render()
 
+    def __len__(self):
+        return len(self.s)
+
     def splitlines(self):
         return [styled_str_from(s, self) for s in self.s.splitlines()]
 
