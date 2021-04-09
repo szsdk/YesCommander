@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+import time
 import term
 from getkey import getkey, keys
+from getkey.platforms import PlatformUnix
 import sys
 import os
 import pyperclip
@@ -70,10 +72,32 @@ def draw():
     term.restoreCursor()
 
 
+class PlatformYC(PlatformUnix):
+    def getkey(self, blocking=True):
+        buffer = ''
+        for c in self.getchars(blocking):
+            buffer += c
+            time.sleep(0.001)
+
+        keycode = self.keys.canon(buffer)
+        if keycode in self.interrupts:
+            interrupt = self.interrupts[keycode]
+            if isinstance(interrupt, BaseException) or \
+                issubclass(interrupt, BaseException):
+                raise interrupt
+            else:
+                raise NotImplementedError('Unimplemented interrupt: {!r}'
+                                          .format(interrupt))
+        return keycode
+
+platform = PlatformYC()
+
+
 def main_loop():
     draw()
     while True:
-        key = getkey()
+        # key = getkey()
+        key = platform.getkey()
         # TODO: Add more shortcuts
         # TODO: Chinese input
         if key == keys.ENTER:
