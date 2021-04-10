@@ -1,9 +1,12 @@
 #!/usr/bin/env python
+import sys
+_STARTUP = len(sys.argv) == 2 and sys.argv[1] == "--startup"
 import time
+if _STARTUP:
+    _STARTUP_t0 = time.time()
 import term
 from getkey import getkey, keys
 from getkey.platforms import PlatformUnix
-import sys
 import os
 import pyperclip
 from pathlib import Path
@@ -116,7 +119,6 @@ def main_loop():
         draw()
 
 
-
 sizey, sizex = term.getSize()
 if sizey < 20 and sizex < 40:
     print("Current window is too small")
@@ -145,6 +147,8 @@ else:
         win, (win.origin[0] + listbox.height + 1, win.origin[1]), win.width, label_height 
     )
 
+if _STARTUP:
+    yc.theme.prompt = f"{time.time() - _STARTUP_t0:.3f} "
 try:
     main_loop()
 except KeyboardInterrupt:

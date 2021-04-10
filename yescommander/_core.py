@@ -12,7 +12,6 @@ __all__ = [
     "BaseCommander",
     "Commander",
     "commander",
-    "CmdCommander",
     "theme",
 ]
 
@@ -45,7 +44,7 @@ def inject_command(cmd):
 
 
 class BaseCommand:
-    def __contains__(self, input_words):
+    def __contains__(self, keywords) -> bool:
         raise NotImplementedError()
 
     def copy_clipboard(self):
@@ -189,24 +188,3 @@ def commander(input_cmds):
         cmd.index = i
         commands.append(cmd)
     return Commander(commands)
-
-
-class CmdCommander(BaseCommander):
-    def __init__(self, folder):
-        self._cmds = None
-        self._folder = folder
-
-    def match(self, keywords):
-        if self._cmds is None:
-            self._cmds = {p.stem: p for p in Path(self._folder).rglob("*.json")}
-        if keywords[0] not in self._cmds:
-            return []
-
-        with self._cmds[keywords[0]].open() as fp:
-            jcmds = json.load(fp)
-        ans = []
-        kw = keywords[1:]
-        for cmd in map(command, jcmds):
-            if kw in cmd:
-                ans.append(cmd)
-        return ans

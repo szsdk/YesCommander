@@ -10,18 +10,6 @@ python3 setup.py install
 
 ## Usage
 
-### Search in command line
-
-```bash
-sc [KEY_WORDS]
-```
-
-example:
-
-```bash
-sc ls
-```
-
 ### Search with an interactive interface
 
 Input 
@@ -32,21 +20,22 @@ in the command line directly.
 
 ## Interface
 
-### `Command` class
+### `BaseCommand` class
 
-- `def __contains__(self, input_words)`
-- `def str_command(self)`
-- `def run(self)`
-- `def duplicate(self)`
+- `def __contains__(self, keywords)->bool`
+- `def str_command(self)->str`
+- `def run(self)->None`
+- `def copy_clipboard(self)->str`
+- `def preview(self)`
 
-### `commands`
 
-The list, `commands`, in `sc_rc.py` consists of objects which are `Command` or
-`Command`'s subclass.
+### `Commander` class
 
-Well, not exactly. To simplify the `sc_rc.py`, you could also put a 2-tuple or
-3-tuple into `commands`, which will be converted into `Command` object
-automatically in `sc`.
+- `def match(self, keywords)`
+
+### List `commands`
+
+The list, `commands`, in `yc_rc.py` consists of a bunch of `BaseCommand` objects.
 
 ## Free your imagination
 
