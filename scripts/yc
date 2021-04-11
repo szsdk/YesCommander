@@ -10,8 +10,8 @@ from getkey.platforms import PlatformUnix
 import os
 import pyperclip
 from pathlib import Path
-import pkg_resources
 import yescommander as yc
+
 
 _CONFIG_PATH = Path("~/.config/yescommander/").expanduser()
 sys.path.insert(0, str(_CONFIG_PATH))
@@ -25,6 +25,7 @@ def init_config_folder():
     config_file = _CONFIG_PATH / "yc_rc.py"
 
     if not config_file.exists():
+        import pkg_resources
         init_cfg_path = pkg_resources.resource_filename("yescommander", "example/rc.py")
         print(f"==== initalize {str(config_file)} ====")
         with open(init_cfg_path, "r") as fp:
@@ -148,7 +149,8 @@ else:
     )
 
 if _STARTUP:
-    yc.theme.prompt = f"{time.time() - _STARTUP_t0:.3f} "
+    dt = time.time() - _STARTUP_t0
+    yc.theme.prompt = f"{dt:.3f} "
 try:
     main_loop()
 except KeyboardInterrupt:
