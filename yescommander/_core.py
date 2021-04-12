@@ -12,28 +12,8 @@ __all__ = [
     "BaseCommander",
     "Commander",
     "commander",
-    "theme",
+    "DebugCommand",
 ]
-
-
-class Theme(dict):
-    """dot.notation access to dictionary attributes"""
-
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__  # type: ignore
-    __delattr__ = dict.__delitem__  # type: ignore
-
-
-theme = Theme()
-theme.detail = Theme()
-theme.detail.bg_color = None
-theme.highlight_color = None
-theme.detail.title_color = None
-theme.default_marker = "●"
-theme.prompt = "▶ "
-theme.listbox = Theme()
-theme.listbox.ratio = 0.4
-# TODO: Add more ui size control parameters
 
 
 def inject_command(cmd):
@@ -94,6 +74,25 @@ class Command(BaseCommand):
 
     def result(self):
         inject_command(self.command)
+
+
+class DebugCommand(BaseCommand):
+    def __init__(self):
+        self.info = {}
+
+    def __contains__(self, keywords):
+        return len(keywords) == 1 and keywords[0] == "debug"
+
+    def str_command(self):
+        return "Debug"
+
+    def preview(self):
+        return {"print debug infomation": ""}
+
+    def result(self):
+        from pprint import pprint
+
+        pprint(self.info)
 
 
 def _from_tuple(t, *args, **kargs):

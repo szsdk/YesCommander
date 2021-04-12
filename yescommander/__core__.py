@@ -23,10 +23,10 @@ class BaseCommand:
     def __contains__(self, input_words):
         raise NotImplementedError()
 
-    def copy_clipboard(self)->str:  # This is not copy
+    def copy_clipboard(self) -> str:  # This is not copy
         return ""
 
-    def preview(self)->dict:
+    def preview(self) -> dict:
         return {}
 
     def result(self):

@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-import sys
-_STARTUP = len(sys.argv) == 2 and sys.argv[1] == "--startup"
 import time
-if _STARTUP:
-    _STARTUP_t0 = time.time()
+_STARTUP_t0 = time.time()
+import sys
 import term
 from getkey import getkey, keys
 from getkey.platforms import PlatformUnix
@@ -60,7 +58,7 @@ def copy(choices):
 def preview_to_text(pv):
     ans = []
     for k, v in pv.items():
-        ans.append(yc.StyledStr(k, color=yc.theme.detail.title_color))
+        ans.append(yc.StyledStr(k, color=yc.theme.preview.title_color))
         ans.append(v)
     return ans
 
@@ -96,7 +94,6 @@ class PlatformYC(PlatformUnix):
 
 platform = PlatformYC()
 
-
 def main_loop():
     draw()
     while True:
@@ -130,10 +127,10 @@ if sizex > 80:
     label_height = height - 1
     win = yc.Window(height, sizex)
 
-    textbox = yc.TextBox(win, 0)
+    textbox = yc.SearchBox(win, win.origin)
     choices = yc.ListBoxData()
-    listbox = yc.ListBox(choices, win, (1, 0), win.height - 1, width=int(win.width * yc.theme.listbox.ratio))
-    labelbox = yc.LabelBox(
+    listbox = yc.ListBox(choices, win, (win.origin[0] + 1,  win.origin[1]), win.height - 1, width=int(win.width * yc.theme.listbox.ratio))
+    labelbox = yc.Preview(
         win, (win.origin[0] + 1, win.origin[1] + listbox.width), (win.width - listbox.width), label_height
     )
 else:
@@ -141,16 +138,21 @@ else:
     label_height = 8
     win = yc.Window(height, sizex)
 
-    textbox = yc.TextBox(win, 0)
-    choices = yc.ListBoxData()
-    listbox = yc.ListBox(choices, win, (1,0), height - 1 - label_height, width=win.width)
-    labelbox = yc.LabelBox(
-        win, (win.origin[0] + listbox.height + 1, win.origin[1]), win.width, label_height 
+    labelbox = yc.Preview(
+        win, (win.origin[0], win.origin[1]), win.width, label_height 
     )
+    textbox = yc.SearchBox(win, (win.origin[0] + labelbox.height, win.origin[1]))
+    choices = yc.ListBoxData()
+    listbox = yc.ListBox(choices, win, (win.origin[0] + 1 + labelbox.height, win.origin[1]), height - 1 - label_height, width=win.width)
 
-if _STARTUP:
-    dt = time.time() - _STARTUP_t0
-    yc.theme.prompt = f"{dt:.3f} "
+
+debug_cmd = yc.DebugCommand()
+debug_cmd.info["gui origins" ] = {"textbox position": textbox.origin,
+"preview position": labelbox.origin,
+"list position": listbox.origin}
+_COMMANDS.append(debug_cmd)
+
+debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
 try:
     main_loop()
 except KeyboardInterrupt:
