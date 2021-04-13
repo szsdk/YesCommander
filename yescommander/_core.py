@@ -8,7 +8,7 @@ __all__ = [
     "Command",
     "command",
     "RunCommand",
-    "TextFile",
+    "FileCommand",
     "BaseCommander",
     "Commander",
     "commander",
@@ -37,6 +37,18 @@ class BaseCommand:
         raise NotImplementedError()
 
 
+def find_kws_cmd(input_words, keywords, command):
+    for k in input_words:
+        findQ = False
+        for kw in keywords:
+            if k in kw:
+                findQ = True
+        if findQ or (k in command):
+            continue
+        return False
+    return True
+
+
 class Command(BaseCommand):
     def __init__(self, keywords, command, description):
         if not isinstance(keywords, list):
@@ -46,17 +58,7 @@ class Command(BaseCommand):
         self.description = description
 
     def __contains__(self, input_words):
-        if not isinstance(input_words, list):
-            input_words = [input_words]
-        for k in input_words:
-            findQ = False
-            for kw in self.keywords:
-                if k in kw:
-                    findQ = True
-            if findQ or (k in self.command):
-                continue
-            return False
-        return True
+        return find_kws_cmd(input_words, self.keywords, self.command)
 
     def str_command(self):
         return self.command
@@ -118,18 +120,45 @@ def command(src, *args, **kargs):
         return _from_tuple(src, *args, **kargs)
 
 
-class TextFile(Command):
-    editor = "vim %s"
+class FileCommand(BaseCommand):
+    # editor = "vim %s"
+    viewer = {"default": "vim %s"}
 
-    def __init__(self, keywords, filename, description, *args, **kargs):
-        super(TextFile, self).__init__(
-            keywords,
-            str(filename),
-            description,
-        )
+    def __init__(self, keywords, filename: str, description: str, filetype: str):
+
+        self.keywords = keywords
+        self.filename = str(filename)
+        self.description = str(description)
+        self.filetype = str(filetype)
+
+    def __contains__(self, keywords):
+        return find_kws_cmd(keywords, self.keywords, self.filename)
+
+    def _open(self):
+        if self.filetype in self.viewer:
+            return self.viewer[self.filetype]
+        return self.viewer["default"]
+
+    def str_command(self):
+        return f"edit {self.filename}"
+
+    def preview(self):
+        ans = {
+            "file": self.filename,
+            "file type": self.filetype,
+            "open command": self._open(),
+        }
+        if self.description != "":
+            ans["description"] = self.description
+        if len(self.keywords) > 0:
+            ans["keywords"] = " ".join(self.keywords)
+        return ans
+
+    def copy_clipboard(self):
+        return self.filename
 
     def result(self):
-        os.system(self.editor % self.command)
+        os.system(self._open() % self.filename)
 
 
 class RunCommand(Command):
@@ -174,10 +203,6 @@ class Commander(BaseCommander):
 
 
 def commander(input_cmds):
-    "initialize `_COMMANDS` list"
-    "1. convert 2-tuple or 3-tuple elements in the `sc_rc.commands` into a"
-    "`Command` object"
-    "2. add `edit_cfg` for editting config file `sc_rc.py`"
     commands = []
     for i, arg in enumerate(input_cmds, 1):
         if isinstance(arg, tuple):
