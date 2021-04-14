@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import time
 _STARTUP_t0 = time.time()
+import threading
+import multiprocessing
 import sys
 import term
 from getkey import getkey, keys
@@ -47,12 +49,11 @@ def update(listbox, text):
 
 def execute(choices):
     choices.commands[choices.getSelected()].result()
-    exit()
+    os._exit(0)
 
 
 def copy(choices):
     pyperclip.copy(choices.commands[choices.getSelected()].copy_clipboard())
-    exit()
 
 
 def preview_to_text(pv):
@@ -94,29 +95,92 @@ class PlatformYC(PlatformUnix):
 
 platform = PlatformYC()
 
+def _process(commander, keywords, pipe):
+    for c in commander._commands:
+        if keywords in c:
+            pipe.put(c)
+
+class StoppableThread(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self,  *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
+
+    def run(self):
+        keywords = textbox.text.split(" ")
+        choices.commands = _COMMANDS.match(keywords)
+        draw()
+        queue = multiprocessing.Queue()
+        proc = multiprocessing.Process(target=_process, args=(lazy_commander, keywords, queue))
+        proc.start()
+        while proc.is_alive() and not self.stopped():
+            try:
+                n = queue.get(False)
+                choices.commands.append(n)
+                draw()
+            except:
+                pass
+        proc.terminate()
+
+
+class LasyTestCommand(yc.BaseCommand):
+    def __init__(self, idx):
+        self.idx = idx
+
+    def __contains__(self, keywords):
+        time.sleep(1)
+        return True
+
+    def str_command(self):
+        return str(self.idx)
+
+    def preview(self):
+        return {"id":str(self.idx)}
+
+lazy_commander = yc.commander([LasyTestCommand(i) for i in range(4)])
+
 def main_loop():
     draw()
+    draw_thread = StoppableThread()
+    ff = 0
     while True:
         # key = getkey()
         key = platform.getkey()
         # TODO: Add more shortcuts
         # TODO: Chinese input
+        ff += 1
         if key == keys.ENTER:
             win.clear()
             execute(choices)
-        elif key in ["\t", keys.DOWN, b"\x0e".decode()]:
+        if key in ["\t", keys.DOWN, b"\x0e".decode()]:
             choices.selectNext()
-        elif key in ["\x1b[Z", keys.UP, b"\x10".decode()]:
+            draw()
+            continue
+        if key in ["\x1b[Z", keys.UP, b"\x10".decode()]:
             choices.selectPrevious()
+            draw()
+            continue
         elif key == "\x04": # Ctrl + d
             copy(choices)
         else:
             textbox.key(key)
             choices._selected = 0
-            update(choices, textbox.text)
-        draw()
+            draw_thread.stop()
+            if draw_thread.is_alive():
+                draw_thread.join()
+            draw_thread = StoppableThread()
+            draw_thread.start()
 
 
+multiprocessing.set_start_method('fork')
 sizey, sizex = term.getSize()
 if sizey < 20 and sizex < 40:
     print("Current window is too small")
@@ -156,4 +220,4 @@ debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
 try:
     main_loop()
 except KeyboardInterrupt:
-    pass
+    os._exit(0)
