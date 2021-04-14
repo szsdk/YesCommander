@@ -26,16 +26,16 @@ def inject_command(cmd):
 
 class BaseCommand:
     def __contains__(self, keywords) -> bool:
-        raise NotImplementedError()
+        return False
 
-    def copy_clipboard(self):
-        raise NotImplementedError()
+    def copy_clipboard(self) -> str:
+        return ""
 
-    def preview(self):
-        raise NotImplementedError()
+    def preview(self) -> dict:
+        return {}
 
-    def result(self):
-        raise NotImplementedError()
+    def result(self) -> None:
+        ...
 
 
 def find_kws_cmd(input_words, keywords, command):
@@ -201,6 +201,7 @@ class Commander(BaseCommander):
 
     def append(self, cmd):
         self._commands.append(cmd)
+
 
 class LazyCommander(BaseCommander):
     def __init__(self, commands):

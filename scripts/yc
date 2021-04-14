@@ -149,6 +149,8 @@ def main_loop():
             continue
         elif key == "\x04": # Ctrl + d
             copy(choices)
+        elif key == keys.ESC:
+            os._exit(0)
         else:
             textbox.key(key)
             choices._selected = 0
