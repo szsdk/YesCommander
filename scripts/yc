@@ -41,6 +41,7 @@ except ModuleNotFoundError:
 
 
 _COMMANDS = yc_rc.commander
+lazy_commander = yc_rc.lazy_commander
 
 
 def update(listbox, text):
@@ -95,11 +96,6 @@ class PlatformYC(PlatformUnix):
 
 platform = PlatformYC()
 
-def _process(commander, keywords, pipe):
-    for c in commander._commands:
-        if keywords in c:
-            pipe.put(c)
-
 class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
     regularly for the stopped() condition."""
@@ -119,7 +115,7 @@ class StoppableThread(threading.Thread):
         choices.commands = _COMMANDS.match(keywords)
         draw()
         queue = multiprocessing.Queue()
-        proc = multiprocessing.Process(target=_process, args=(lazy_commander, keywords, queue))
+        proc = multiprocessing.Process(target=lazy_commander.match, args=(keywords, queue))
         proc.start()
         while proc.is_alive() and not self.stopped():
             try:
@@ -131,28 +127,11 @@ class StoppableThread(threading.Thread):
         proc.terminate()
 
 
-class LasyTestCommand(yc.BaseCommand):
-    def __init__(self, idx):
-        self.idx = idx
-
-    def __contains__(self, keywords):
-        time.sleep(1)
-        return True
-
-    def str_command(self):
-        return str(self.idx)
-
-    def preview(self):
-        return {"id":str(self.idx)}
-
-lazy_commander = yc.commander([LasyTestCommand(i) for i in range(4)])
-
 def main_loop():
     draw()
     draw_thread = StoppableThread()
     ff = 0
     while True:
-        # key = getkey()
         key = platform.getkey()
         # TODO: Add more shortcuts
         # TODO: Chinese input

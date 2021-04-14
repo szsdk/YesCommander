@@ -11,6 +11,7 @@ __all__ = [
     "FileCommand",
     "BaseCommander",
     "Commander",
+    "LazyCommander",
     "commander",
     "DebugCommand",
 ]
@@ -200,6 +201,18 @@ class Commander(BaseCommander):
 
     def append(self, cmd):
         self._commands.append(cmd)
+
+class LazyCommander(BaseCommander):
+    def __init__(self, commands):
+        self._commands = commands
+
+    def match(self, keywords, queue):
+        for c in self._commands:
+            if isinstance(c, BaseCommand):
+                if keywords in c:
+                    queue.put(c)
+            else:
+                c.match(keywords, queue=queue)
 
 
 def commander(input_cmds):
