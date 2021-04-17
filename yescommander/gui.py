@@ -8,6 +8,7 @@ from tcolorpy import tcolor
 from itertools import chain
 from functools import partial
 from . import styled_str as ss
+from . import logger
 import textwrap
 
 __all__ = ["Window", "SearchBox", "ListBox", "ListBoxData", "Preview", "theme"]
@@ -26,7 +27,7 @@ theme.preview = Theme()
 theme.preview.bg_color = None
 theme.preview.title_color = None
 theme.preview.frame_color = "black"
-theme.preview.default_marker = "●"
+theme.preview.default_marker = "● "
 theme.searchbox = Theme()
 theme.searchbox.prompt = "▶ "
 theme.listbox = Theme()
@@ -104,9 +105,11 @@ class SearchBox:
         term.write(self.text)
 
     def key(self, key):
-        if key in [keys.BACKSPACE, "\x08"]:  # \x08
+        if key in [keys.BACKSPACE, "\x08"]:  # \x08 ctrl+h
             if len(self.text) > 0:
                 self.text = self.text[:-1]
+        elif key == "\x0c": # Ctrl + l
+            self.text = ""
         else:
             self.text = self.text + key
 
@@ -248,7 +251,7 @@ class ListBox:
             term.down(1)
             marker = cmd.marker if hasattr(cmd, "marker") else theme.default_marker
             s = textwrap.shorten(f"{cmd.str_command()}", self.width - 2)
-            term.write(f"\r{marker} ")
+            term.write(f"\r{marker}")
             if self._data.isSelected(i):
                 term.write(tcolor(s, color=theme.highlight_color, styles=["bold"]))
             else:

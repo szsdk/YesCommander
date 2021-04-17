@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import time
 _STARTUP_t0 = time.time()
+from queue import Empty
 import threading
 import multiprocessing
 import sys
@@ -11,6 +12,7 @@ import os
 import pyperclip
 from pathlib import Path
 import yescommander as yc
+
 
 
 _CONFIG_PATH = Path("~/.config/yescommander/").expanduser()
@@ -55,6 +57,7 @@ def execute(choices):
 
 def copy(choices):
     pyperclip.copy(choices.commands[choices.getSelected()].copy_clipboard())
+    os._exit(0)
 
 
 def preview_to_text(pv):
@@ -117,25 +120,28 @@ class StoppableThread(threading.Thread):
         queue = multiprocessing.Queue()
         proc = multiprocessing.Process(target=lazy_commander.match, args=(keywords, queue))
         proc.start()
-        while proc.is_alive() and not self.stopped():
+        while not self.stopped():
             try:
                 n = queue.get(False)
                 choices.commands.append(n)
+                yc.logger.debug("get %s alive %s", n.str_command(), str(proc.is_alive()))
                 draw()
-            except:
+            except Empty as e:
+                if not proc.is_alive():
+                    break
                 pass
+        yc.logger.debug("stop process")
         proc.terminate()
 
 
 def main_loop():
     draw()
     draw_thread = StoppableThread()
-    ff = 0
     while True:
         key = platform.getkey()
+        yc.logger.debug(key.encode())
         # TODO: Add more shortcuts
         # TODO: Chinese input
-        ff += 1
         if key == keys.ENTER:
             win.clear()
             execute(choices)

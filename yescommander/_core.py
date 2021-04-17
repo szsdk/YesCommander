@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from pathlib import Path
+import concurrent.futures
 
 __all__ = [
     "BaseCommand",
@@ -11,11 +12,14 @@ __all__ = [
     "FileCommand",
     "BaseCommander",
     "Commander",
+    "BaseLazyCommander",
     "LazyCommander",
     "commander",
     "DebugCommand",
+    "default_executor",
 ]
 
+default_executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 def inject_command(cmd):
     import fcntl, termios
@@ -202,18 +206,22 @@ class Commander(BaseCommander):
     def append(self, cmd):
         self._commands.append(cmd)
 
+class BaseLazyCommander:
+    def match(self, keywords, queue):
+        raise NotImplementedError()
 
-class LazyCommander(BaseCommander):
+class LazyCommander(BaseLazyCommander):
     def __init__(self, commands):
         self._commands = commands
 
     def match(self, keywords, queue):
         for c in self._commands:
-            if isinstance(c, BaseCommand):
+            if isinstance(c, BaseLazyCommander):
+                c.match(keywords, queue=queue)
+            elif isinstance(c, BaseCommand):
                 if keywords in c:
                     queue.put(c)
-            else:
-                c.match(keywords, queue=queue)
+        default_executor.shutdown(wait=True)
 
 
 def commander(input_cmds):
