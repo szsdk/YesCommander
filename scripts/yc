@@ -260,13 +260,15 @@ class YCApplication(Application):
             )
             root_container = HSplit(
                 [
-                    Frame(self.preview),
+                    Frame(self.preview, style=yc.theme.preview.frame_color)
+                    if yc.theme.preview.frame
+                    else self.preview,
                     VSplit([prompt_marker, self.textbox]),
                     self.listbox,
                 ]
             )
         else:
-            self.preview = Preview(width=int(0.6 * width), height=height - 3)
+            self.preview = Preview(width=int(0.6 * width) - 2, height=height - 3)
             self.listbox = ListBox(
                 width=width - self.preview.width - 2,
                 height=height - 1,
@@ -275,7 +277,14 @@ class YCApplication(Application):
             root_container = HSplit(
                 [
                     VSplit([prompt_marker, self.textbox]),
-                    VSplit([self.listbox, Frame(self.preview)]),
+                    VSplit(
+                        [
+                            self.listbox,
+                            Frame(self.preview, style=yc.theme.preview.frame_color)
+                            if yc.theme.preview.frame
+                            else self.preview,
+                        ]
+                    ),
                 ]
             )
         super().__init__(

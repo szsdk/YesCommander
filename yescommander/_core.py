@@ -38,6 +38,7 @@ theme.preview.bg_color = None
 theme.preview.title_color = None
 theme.preview.frame_color = "black"
 theme.preview.default_marker = "● "
+theme.preview.frame = True
 theme.searchbox = Theme()
 theme.searchbox.prompt = "▶ "
 theme.listbox = Theme()
