@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import time
+
 _STARTUP_t0 = time.time()
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
@@ -10,8 +11,8 @@ from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
-# from prompt_toolkit.shortcuts import clear as clear_screen
 
+import shutil
 from queue import Empty
 import threading
 import multiprocessing
@@ -21,7 +22,7 @@ import pyperclip
 from pathlib import Path
 import yescommander as yc
 
-multiprocessing.set_start_method('fork')
+multiprocessing.set_start_method("fork")
 
 _CONFIG_PATH = Path("~/.config/yescommander/").expanduser()
 sys.path.insert(0, str(_CONFIG_PATH))
@@ -36,6 +37,7 @@ def init_config_folder():
 
     if not config_file.exists():
         import pkg_resources
+
         init_cfg_path = pkg_resources.resource_filename("yescommander", "example/rc.py")
         print(f"==== initalize {str(config_file)} ====")
         with open(init_cfg_path, "r") as fp:
@@ -54,13 +56,6 @@ commander = yc_rc.commander
 lazy_commander = yc_rc.lazy_commander
 
 
-
-def show_commands(commands):
-    listbox.update(commands)
-    app.invalidate()
-
-
-
 class Preview(Window):
     def __init__(self, width, height=None):
         super().__init__(content=FormattedTextControl(), width=width, height=height)
@@ -68,12 +63,11 @@ class Preview(Window):
     def update(self, cmd):
         ans = []
         for k, v in cmd.preview().items():
-            # ans.append(yc.StyledStr(k, color=yc.theme.preview.title_color))
-            ans.append((yc.theme.preview.title_color, k))
-            ans.append(("", "\n"))
-            ans.append(("", v))
-            ans.append(("", "\n"))
+            ans.extend(
+                [(yc.theme.preview.title_color, k), ("", "\n"), ("", v), ("", "\n")]
+            )
         self.content.text = FormattedText(ans)
+
 
 class ListBoxData:
     def __init__(self):
@@ -108,12 +102,13 @@ class ListBoxData:
 
 
 class ListBox(Window):
-    def __init__(self, preview, width, height=None):
+    def __init__(self, width, height=None, data=None):
         super().__init__(content=FormattedTextControl(), width=width, height=height)
         self._selected = 0
-        self.data = ListBoxData()
-        self.preview = preview
-
+        if data is None:
+            self.data = ListBoxData()
+        else:
+            self.data = data
 
     def get_start_end(self):
         selectedIndex = self.data.getSelected()
@@ -127,29 +122,33 @@ class ListBox(Window):
             end = min(start + self.height, len(self.data))
         return start, end
 
-    def update(self, commands=None):
-        if commands is not None:
-            self.data.commands = commands
-
+    def update(self):
         t = []
         selected_idx = self.data.getSelected()
         for i in range(*self.get_start_end()):
             cmd = self.data[i]
-            t.append((yc.theme.marker_color, cmd.marker if hasattr(cmd, "marker") else yc.theme.default_marker))
-            t.append((f"{yc.theme.highlight_color} bold" if selected_idx == i else "", cmd.str_command()))
-            t.append(("", "\n"))
+            t.extend(
+                [
+                    (
+                        yc.theme.marker_color,
+                        cmd.marker
+                        if hasattr(cmd, "marker")
+                        else yc.theme.default_marker,
+                    ),
+                    (
+                        f"{yc.theme.highlight_color} bold" if selected_idx == i else "",
+                        cmd.str_command(),
+                    ),
+                    ("", "\n"),
+                ]
+            )
         self.content.text = FormattedText(t)
-        self.preview.update(self.data.getSelection())
 
-import shutil
-terminal_size = shutil.get_terminal_size((80, 20))
-
-preview = Preview(width= int(0.6 * terminal_size.columns), height=13)
-listbox = ListBox(preview, width=terminal_size.columns - preview.width - 2, height=15)
 
 kb = KeyBindings()
 
-@kb.add('c-c')
+
+@kb.add("c-c")
 def exit_(event):
     """
     Pressing Ctrl-Q will exit the user interface.
@@ -157,44 +156,53 @@ def exit_(event):
     Setting a return value means: quit the event loop that drives the user
     interface and return this value from the `Application.run()` call.
     """
+    event.app.stop_draw()
     event.app.exit()
 
 
-        # if key in ["\t", keys.DOWN, b"\x0e".decode()]:
-
-@kb.add('c-p')
-@kb.add('up')
+@kb.add("c-p")
+@kb.add("up")
 def select_previous_(event):
-    listbox.data.selectPrevious()
-    listbox.update()
-    event.app.invalidate()
+    app = event.app
+    app.listdata.selectPrevious()
+    app.update()
+    app.invalidate()
 
-@kb.add('c-n')
-@kb.add('down')
+
+@kb.add("c-n")
+@kb.add("down")
 def select_next_(event):
-    listbox.data.selectNext()
-    listbox.update()
-    event.app.invalidate()
+    app = event.app
+    app.listdata.selectNext()
+    app.update()
+    app.invalidate()
 
 
-@kb.add('enter')
+@kb.add("enter")
 def execute(event):
-    event.app.exit()
-    listbox.data.commands[listbox.data.getSelected()].result()
+    app = event.app
+    app.stop_draw()
+    app.exit()
+    app.listbox.data.commands[app.listbox.data.getSelected()].result()
 
 
-@kb.add('c-d')
+@kb.add("c-d")
 def copy(event):
-    pyperclip.copy(listbox.data.getSelection().copy_clipboard())
-    os._exit(0)
+    app = event.app
+    app.stop_draw()
+    app.exit()
+    pyperclip.copy(app.listbox.data.getSelection().copy_clipboard())
+    print("Copied")
+
 
 class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
     regularly for the stopped() condition."""
 
-    def __init__(self,  *args, **kwargs):
+    def __init__(self, app, *args, **kwargs):
         super(StoppableThread, self).__init__(*args, **kwargs)
         self._stop_event = threading.Event()
+        self._app = app
 
     def stop(self):
         self._stop_event.set()
@@ -203,64 +211,108 @@ class StoppableThread(threading.Thread):
         return self._stop_event.is_set()
 
     def run(self):
-        searching_text = searching_text_buffer.text
+        searching_text = self._app.textbox_buffer.text
         keywords = searching_text.split(" ")
         if len(keywords) == 0:
             commands = []
         else:
             commands = commander.match(keywords)
 
-        show_commands(commands)
+        self._app.update(commands)
 
         queue = multiprocessing.Queue()
-        proc = multiprocessing.Process(target=lazy_commander.match, args=(keywords, queue))
+        proc = multiprocessing.Process(
+            target=lazy_commander.match, args=(keywords, queue)
+        )
         proc.start()
         while not self.stopped():
             try:
                 n = queue.get(False)
                 commands.append(n)
-                show_commands(commands)
-                # yc.logger.debug("get %s alive %s", n.str_command(), str(proc.is_alive()))
-                # display1.text = "\n".join([cmd.str_command() for cmd in commands])
-                # app.invalidate()
-                # # draw()
+                self._app.update(commands)
             except Empty as e:
                 if not proc.is_alive():
-                    break
+                    time.sleep(0.01)
                 pass
-        yc.logger.debug("stop process")
         proc.terminate()
 
 
-draw_thread = StoppableThread()
-def searching_text_changed(buf):
-    # app.invalidate()
-    global draw_thread
-    draw_thread.stop()
-    if draw_thread.is_alive():
-        draw_thread.join()
-    draw_thread = StoppableThread()
-    draw_thread.start()
+class YCApplication(Application):
+    def __init__(self, width, height=16):
+        prompt_marker = Window(
+            width=2,
+            height=1,
+            content=FormattedTextControl(
+                text=FormattedText([(yc.theme.highlight_color, yc.theme.prompt)])
+            ),
+        )
+        self.textbox_buffer = Buffer(
+            on_text_changed=self.searching_text_changed, multiline=False
+        )  # Editable buffer.
+        self.textbox = Window(
+            content=BufferControl(buffer=self.textbox_buffer), height=1
+        )
+        self.listdata = ListBoxData()
+        if width < 80:
+            self.preview = Preview(width=width - 2, height=7)
+            self.listbox = ListBox(
+                width=width, height=height - self.preview.height, data=self.listdata
+            )
+            root_container = HSplit(
+                [
+                    Frame(self.preview),
+                    VSplit([prompt_marker, self.textbox]),
+                    self.listbox,
+                ]
+            )
+        else:
+            self.preview = Preview(width=int(0.6 * width), height=height - 3)
+            self.listbox = ListBox(
+                width=width - self.preview.width - 2,
+                height=height - 1,
+                data=self.listdata,
+            )
+            root_container = HSplit(
+                [
+                    VSplit([prompt_marker, self.textbox]),
+                    VSplit([self.listbox, Frame(self.preview)]),
+                ]
+            )
+        super().__init__(
+            layout=Layout(root_container),
+            full_screen=False,
+            key_bindings=kb,
+            erase_when_done=True,
+        )
+
+        self._draw_thread = StoppableThread(self)
+
+    def searching_text_changed(self, buf):
+        self._draw_thread.stop()
+        if self._draw_thread.is_alive():
+            self._draw_thread.join()
+        self._draw_thread = StoppableThread(self)
+        self._draw_thread.start()
+
+    def update(self, commands=None):
+        if commands is not None:
+            self.listdata.commands = commands
+        self.listbox.update()
+        self.preview.update(self.listdata.getSelection())
+        self.invalidate()
+
+    def stop_draw(self):
+        self._draw_thread.stop()
 
 
-searching_text_buffer = Buffer(on_text_changed=searching_text_changed, multiline=False)  # Editable buffer.
-# searching_text_buffer = Buffer(multiline=False)  # Editable buffer.
+def main():
+    terminal_size = shutil.get_terminal_size((80, 20))
+    debug_cmd = yc.DebugCommand()
+    commander.append(debug_cmd)
+    debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
+    app = YCApplication(terminal_size.columns, 19)
+    app.run()
 
-root_container = HSplit([
-    VSplit([
-        Window(width=2, height=1, content=FormattedTextControl(text=FormattedText([(yc.theme.highlight_color, yc.theme.prompt)]))),
-        Window(content=BufferControl(buffer=searching_text_buffer), height=1),
-    ]),
-    VSplit([
-        listbox,
-        Frame(preview)
-    ])
-    ])
 
-layout = Layout(root_container)
-
-debug_cmd = yc.DebugCommand()
-commander.append(debug_cmd)
-debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
-app = Application(layout=layout, full_screen=False, key_bindings=kb, erase_when_done=True,)
-app.run() # You won't be able to Exit this app
+if __name__ == "__main__":
+    main()
