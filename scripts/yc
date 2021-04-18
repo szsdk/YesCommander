@@ -1,19 +1,27 @@
 #!/usr/bin/env python
+
 import time
 _STARTUP_t0 = time.time()
+from prompt_toolkit import Application
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.layout.containers import VSplit, HSplit, Window
+from prompt_toolkit.widgets import Frame
+from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
+from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit.layout.layout import Layout
+from prompt_toolkit.key_binding import KeyBindings
+# from prompt_toolkit.shortcuts import clear as clear_screen
+
 from queue import Empty
 import threading
 import multiprocessing
 import sys
-import term
-from getkey import getkey, keys
-from getkey.platforms import PlatformUnix
 import os
 import pyperclip
 from pathlib import Path
 import yescommander as yc
 
-
+multiprocessing.set_start_method('fork')
 
 _CONFIG_PATH = Path("~/.config/yescommander/").expanduser()
 sys.path.insert(0, str(_CONFIG_PATH))
@@ -42,62 +50,143 @@ except ModuleNotFoundError:
     init_config_folder()
 
 
-_COMMANDS = yc_rc.commander
+commander = yc_rc.commander
 lazy_commander = yc_rc.lazy_commander
 
 
-def update(listbox, text):
-    listbox.commands = _COMMANDS.match(text.split(" "))
+
+def show_commands(commands):
+    listbox.update(commands)
+    app.invalidate()
 
 
-def execute(choices):
-    choices.commands[choices.getSelected()].result()
+
+class Preview(Window):
+    def __init__(self, width, height=None):
+        super().__init__(content=FormattedTextControl(), width=width, height=height)
+
+    def update(self, cmd):
+        ans = []
+        for k, v in cmd.preview().items():
+            # ans.append(yc.StyledStr(k, color=yc.theme.preview.title_color))
+            ans.append((yc.theme.preview.title_color, k))
+            ans.append(("", "\n"))
+            ans.append(("", v))
+            ans.append(("", "\n"))
+        self.content.text = FormattedText(ans)
+
+class ListBoxData:
+    def __init__(self):
+        self.commands = []
+        self._selected = 0
+
+    def isSelected(self, i):
+        if self._selected is None:
+            return False
+        return self._selected == i
+
+    def selectNext(self):
+        self._selected = (self._selected + 1) % len(self)
+
+    def selectPrevious(self):
+        self._selected = (self._selected - 1) % len(self)
+
+    def getSelected(self):
+        self._selected = min(self._selected, len(self.commands) - 1)
+        return self._selected
+
+    def __len__(self):
+        return len(self.commands)
+
+    def __getitem__(self, idx):
+        return self.commands[idx]
+
+    def getSelection(self):
+        if len(self.commands) == 0:
+            return None
+        return self.commands[self.getSelected()]
+
+
+class ListBox(Window):
+    def __init__(self, preview, width, height=None):
+        super().__init__(content=FormattedTextControl(), width=width, height=height)
+        self._selected = 0
+        self.data = ListBoxData()
+        self.preview = preview
+
+
+    def get_start_end(self):
+        selectedIndex = self.data.getSelected()
+        halfHeight = self.height // 2
+        if selectedIndex < halfHeight:
+            start, end = 0, min(self.height, len(self.data))
+        elif selectedIndex + halfHeight >= len(self.data):
+            start, end = max(0, len(self.data) - self.height), len(self.data)
+        else:
+            start = max(0, selectedIndex - halfHeight)
+            end = min(start + self.height, len(self.data))
+        return start, end
+
+    def update(self, commands=None):
+        if commands is not None:
+            self.data.commands = commands
+
+        t = []
+        selected_idx = self.data.getSelected()
+        for i in range(*self.get_start_end()):
+            cmd = self.data[i]
+            t.append((yc.theme.marker_color, cmd.marker if hasattr(cmd, "marker") else yc.theme.default_marker))
+            t.append((f"{yc.theme.highlight_color} bold" if selected_idx == i else "", cmd.str_command()))
+            t.append(("", "\n"))
+        self.content.text = FormattedText(t)
+        self.preview.update(self.data.getSelection())
+
+import shutil
+terminal_size = shutil.get_terminal_size((80, 20))
+
+preview = Preview(width= int(0.6 * terminal_size.columns), height=13)
+listbox = ListBox(preview, width=terminal_size.columns - preview.width - 2, height=15)
+
+kb = KeyBindings()
+
+@kb.add('c-c')
+def exit_(event):
+    """
+    Pressing Ctrl-Q will exit the user interface.
+
+    Setting a return value means: quit the event loop that drives the user
+    interface and return this value from the `Application.run()` call.
+    """
+    event.app.exit()
+
+
+        # if key in ["\t", keys.DOWN, b"\x0e".decode()]:
+
+@kb.add('c-p')
+@kb.add('up')
+def select_previous_(event):
+    listbox.data.selectPrevious()
+    listbox.update()
+    event.app.invalidate()
+
+@kb.add('c-n')
+@kb.add('down')
+def select_next_(event):
+    listbox.data.selectNext()
+    listbox.update()
+    event.app.invalidate()
+
+
+@kb.add('enter')
+def execute(event):
+    event.app.exit()
+    listbox.data.commands[listbox.data.getSelected()].result()
+
+
+@kb.add('c-d')
+def copy(event):
+    pyperclip.copy(listbox.data.getSelection().copy_clipboard())
     os._exit(0)
-
-
-def copy(choices):
-    pyperclip.copy(choices.commands[choices.getSelected()].copy_clipboard())
-    os._exit(0)
-
-
-def preview_to_text(pv):
-    ans = []
-    for k, v in pv.items():
-        ans.append(yc.StyledStr(k, color=yc.theme.preview.title_color))
-        ans.append(v)
-    return ans
-
-def draw():
-    textbox.draw()
-    term.saveCursor()
-    listbox.draw()
-    if selection := choices.getSelection():
-        labelbox.setText(preview_to_text(selection.preview()))
-    else:
-        labelbox.setText([])
-    labelbox.draw()
-    term.restoreCursor()
-
-
-class PlatformYC(PlatformUnix):
-    def getkey(self, blocking=True):
-        buffer = ''
-        for c in self.getchars(blocking):
-            buffer += c
-            time.sleep(0.001)
-
-        keycode = self.keys.canon(buffer)
-        if keycode in self.interrupts:
-            interrupt = self.interrupts[keycode]
-            if isinstance(interrupt, BaseException) or \
-                issubclass(interrupt, BaseException):
-                raise interrupt
-            else:
-                raise NotImplementedError('Unimplemented interrupt: {!r}'
-                                          .format(interrupt))
-        return keycode
-
-platform = PlatformYC()
 
 class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
@@ -114,18 +203,27 @@ class StoppableThread(threading.Thread):
         return self._stop_event.is_set()
 
     def run(self):
-        keywords = textbox.text.split(" ")
-        choices.commands = _COMMANDS.match(keywords)
-        draw()
+        searching_text = searching_text_buffer.text
+        keywords = searching_text.split(" ")
+        if len(keywords) == 0:
+            commands = []
+        else:
+            commands = commander.match(keywords)
+
+        show_commands(commands)
+
         queue = multiprocessing.Queue()
         proc = multiprocessing.Process(target=lazy_commander.match, args=(keywords, queue))
         proc.start()
         while not self.stopped():
             try:
                 n = queue.get(False)
-                choices.commands.append(n)
-                yc.logger.debug("get %s alive %s", n.str_command(), str(proc.is_alive()))
-                draw()
+                commands.append(n)
+                show_commands(commands)
+                # yc.logger.debug("get %s alive %s", n.str_command(), str(proc.is_alive()))
+                # display1.text = "\n".join([cmd.str_command() for cmd in commands])
+                # app.invalidate()
+                # # draw()
             except Empty as e:
                 if not proc.is_alive():
                     break
@@ -134,77 +232,35 @@ class StoppableThread(threading.Thread):
         proc.terminate()
 
 
-def main_loop():
-    draw()
+draw_thread = StoppableThread()
+def searching_text_changed(buf):
+    # app.invalidate()
+    global draw_thread
+    draw_thread.stop()
+    if draw_thread.is_alive():
+        draw_thread.join()
     draw_thread = StoppableThread()
-    while True:
-        key = platform.getkey()
-        yc.logger.debug(key.encode())
-        # TODO: Add more shortcuts
-        # TODO: Chinese input
-        if key == keys.ENTER:
-            win.clear()
-            execute(choices)
-        if key in ["\t", keys.DOWN, b"\x0e".decode()]:
-            choices.selectNext()
-            draw()
-            continue
-        if key in ["\x1b[Z", keys.UP, b"\x10".decode()]:
-            choices.selectPrevious()
-            draw()
-            continue
-        elif key == "\x04": # Ctrl + d
-            copy(choices)
-        elif key == keys.ESC:
-            os._exit(0)
-        else:
-            textbox.key(key)
-            choices._selected = 0
-            draw_thread.stop()
-            if draw_thread.is_alive():
-                draw_thread.join()
-            draw_thread = StoppableThread()
-            draw_thread.start()
+    draw_thread.start()
 
 
-multiprocessing.set_start_method('fork')
-sizey, sizex = term.getSize()
-if sizey < 20 and sizex < 40:
-    print("Current window is too small")
-    exit()
+searching_text_buffer = Buffer(on_text_changed=searching_text_changed, multiline=False)  # Editable buffer.
+# searching_text_buffer = Buffer(multiline=False)  # Editable buffer.
 
-if sizex > 80:
-    height = 15
-    label_height = height - 1
-    win = yc.Window(height, sizex)
+root_container = HSplit([
+    VSplit([
+        Window(width=2, height=1, content=FormattedTextControl(text=FormattedText([(yc.theme.highlight_color, yc.theme.prompt)]))),
+        Window(content=BufferControl(buffer=searching_text_buffer), height=1),
+    ]),
+    VSplit([
+        listbox,
+        Frame(preview)
+    ])
+    ])
 
-    textbox = yc.SearchBox(win, win.origin)
-    choices = yc.ListBoxData()
-    listbox = yc.ListBox(choices, win, (win.origin[0] + 1,  win.origin[1]), win.height - 1, width=int(win.width * yc.theme.listbox.ratio))
-    labelbox = yc.Preview(
-        win, (win.origin[0] + 1, win.origin[1] + listbox.width), (win.width - listbox.width), label_height
-    )
-else:
-    height = 20 
-    label_height = 8
-    win = yc.Window(height, sizex)
-
-    labelbox = yc.Preview(
-        win, (win.origin[0], win.origin[1]), win.width, label_height 
-    )
-    textbox = yc.SearchBox(win, (win.origin[0] + labelbox.height, win.origin[1]))
-    choices = yc.ListBoxData()
-    listbox = yc.ListBox(choices, win, (win.origin[0] + 1 + labelbox.height, win.origin[1]), height - 1 - label_height, width=win.width)
-
+layout = Layout(root_container)
 
 debug_cmd = yc.DebugCommand()
-debug_cmd.info["gui origins" ] = {"textbox position": textbox.origin,
-"preview position": labelbox.origin,
-"list position": listbox.origin}
-_COMMANDS.append(debug_cmd)
-
+commander.append(debug_cmd)
 debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
-try:
-    main_loop()
-except KeyboardInterrupt:
-    os._exit(0)
+app = Application(layout=layout, full_screen=False, key_bindings=kb, erase_when_done=True,)
+app.run() # You won't be able to Exit this app

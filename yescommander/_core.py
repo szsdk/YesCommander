@@ -17,9 +17,34 @@ __all__ = [
     "commander",
     "DebugCommand",
     "default_executor",
+    "theme",
 ]
 
 default_executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+
+
+class Theme(dict):
+    """dot.notation access to dictionary attributes"""
+
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__  # type: ignore
+    __delattr__ = dict.__delitem__  # type: ignore
+
+
+theme = Theme()
+theme.marker_color = ""
+theme.preview = Theme()
+theme.preview.bg_color = None
+theme.preview.title_color = None
+theme.preview.frame_color = "black"
+theme.preview.default_marker = "● "
+theme.searchbox = Theme()
+theme.searchbox.prompt = "▶ "
+theme.listbox = Theme()
+theme.listbox.ratio = 0.4
+theme.listbox.highlight_color = None
+# TODO: Add more ui size control parameters
+
 
 def inject_command(cmd):
     import fcntl, termios
@@ -206,9 +231,11 @@ class Commander(BaseCommander):
     def append(self, cmd):
         self._commands.append(cmd)
 
+
 class BaseLazyCommander:
     def match(self, keywords, queue):
         raise NotImplementedError()
+
 
 class LazyCommander(BaseLazyCommander):
     def __init__(self, commands):

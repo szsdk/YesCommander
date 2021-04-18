@@ -1,6 +1,6 @@
 import logging
 
-logger = logging.getLogger('YesCommander')
+logger = logging.getLogger("YesCommander")
 logger.setLevel(logging.WARNING)
 
 # ====== For debugging
@@ -13,5 +13,3 @@ logger.setLevel(logging.WARNING)
 # ====== For debugging
 
 from ._core import *
-from .gui import *
-from .styled_str import StyledStr
