@@ -14,6 +14,7 @@ __all__ = [
     "Commander",
     "BaseLazyCommander",
     "LazyCommander",
+    "RunAsyncCommander",
     "commander",
     "DebugCommand",
     "default_executor",
@@ -260,6 +261,31 @@ class LazyCommander(BaseLazyCommander):
                 if c.match(keywords):
                     queue.put(c)
         default_executor.shutdown(wait=True)
+
+
+class RunAsyncCommander(BaseLazyCommander):
+    def __init__(self, commands):
+        self._commands = commands
+
+    async def _single_match(self, cmd, keywords, queue):
+        if isinstance(cmd, BaseLazyCommander):
+            await cmd.match(keywords, queue=queue)
+        elif isinstance(cmd, BaseCommand):
+            if await cmd.match(keywords):
+                queue.put(cmd)
+
+    async def _match(self, keywords, queue):
+        import asyncio
+
+        for c in asyncio.as_completed(
+            [self._single_match(cmd, keywords, queue) for cmd in self._commands]
+        ):
+            await c
+
+    def match(self, keywords, queue):
+        import asyncio
+
+        asyncio.run(self._match(keywords, queue))
 
 
 def commander(input_cmds):
