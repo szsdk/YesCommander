@@ -105,8 +105,10 @@ class ListBoxData:
 
 
 class ListBox(Window):
-    def __init__(self, width, height=None, data=None):
-        super().__init__(content=FormattedTextControl(), width=width, height=height)
+    def __init__(self, width, height=None, data=None, **kargs):
+        super().__init__(
+            content=FormattedTextControl(), width=width, height=height, **kargs
+        )
         self._selected = 0
         if data is None:
             self.data = ListBoxData()
@@ -258,7 +260,7 @@ class YCApplication(Application):
             content=BufferControl(buffer=self.textbox_buffer),
             height=1,
             get_line_prefix=lambda line_num, wrap_count: FormattedText(
-                [(yc.theme.highlight_color, yc.theme.prompt)]
+                [(yc.theme.highlight_color, yc.theme.searchbox.prompt)]
             ),
         )
         self.listdata = ListBoxData()
@@ -285,7 +287,9 @@ class YCApplication(Application):
 
     def _init_narrow(self, width, height):
         if height < yc.theme.narrow_height:
-            raise RuntimeError(f"This terminal is too short {height} < {yc.theme.narrow_height}")
+            raise RuntimeError(
+                f"This terminal is too short {height} < {yc.theme.narrow_height}"
+            )
 
         self.preview = Preview(
             width=width,
@@ -293,14 +297,19 @@ class YCApplication(Application):
             style=f"bg:{yc.theme.preview.bg_color}",
         )
         self.listbox = ListBox(
-            width=width, height=yc.theme.narrow_height - self.preview.height, data=self.listdata
+            width=width,
+            height=yc.theme.narrow_height - self.preview.height,
+            data=self.listdata,
+            style=f"bg:{yc.theme.listbox.bg_color}",
         )
         root_container = HSplit([self._init_show_preview(), self.textbox, self.listbox])
         return root_container
 
     def _init_wide(self, width, height):
         if height < yc.theme.wide_height:
-            raise RuntimeError(f"This terminal is too short {height} < {yc.theme.wide_height}")
+            raise RuntimeError(
+                f"This terminal is too short {height} < {yc.theme.wide_height}"
+            )
         self.preview = Preview(
             width=int(0.6 * width),
             height=yc.theme.wide_height,
@@ -310,6 +319,7 @@ class YCApplication(Application):
             width=width - self.preview.width,
             height=yc.theme.wide_height - 1,
             data=self.listdata,
+            style=f"bg:{yc.theme.listbox.bg_color}",
         )
 
         root_container = HSplit(
@@ -346,7 +356,9 @@ class YCApplication(Application):
 
 def main():
     terminal_size = shutil.get_terminal_size((80, 20))
-    app = YCApplication(terminal_size.columns, terminal_size.lines, color_depth=ColorDepth.DEPTH_24_BIT)
+    app = YCApplication(
+        terminal_size.columns, terminal_size.lines, color_depth=ColorDepth.DEPTH_24_BIT
+    )
     debug_cmd = yc.DebugCommand()
     commander.append(debug_cmd)
     debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0

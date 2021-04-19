@@ -26,7 +26,11 @@ default_executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 class Theme(dict):
     """dot.notation access to dictionary attributes"""
 
-    __getattr__ = dict.get
+    def __getattr__(self, attr):
+        if attr not in self:
+            raise KeyError(attr)
+        return dict.get(self, attr)
+
     __setattr__ = dict.__setitem__  # type: ignore
     __delattr__ = dict.__delitem__  # type: ignore
 
@@ -35,19 +39,21 @@ theme = Theme()
 theme.marker_color = ""
 theme.preview = Theme()
 theme.preview.bg_color = ""
-theme.preview.title_color = None
+theme.preview.title_color = ""
 theme.preview.frame_color = "black"
-theme.preview.default_marker = "● "
+theme.default_marker = "- "
 theme.preview.frame = True
 theme.preview.narrow_height = 8  # Used for narrow layout
 theme.searchbox = Theme()
-theme.searchbox.prompt = "▶ "
+theme.searchbox.prompt = "> "
 theme.listbox = Theme()
 theme.listbox.ratio = 0.4
-theme.listbox.highlight_color = None
+theme.listbox.highlight_color = ""
+theme.listbox.bg_color = ""
 theme.max_narrow_width = 80
 theme.wide_height = 20
 theme.narrow_height = 20
+theme.highlight_color = "grey"
 # TODO: Add more ui size control parameters
 
 
