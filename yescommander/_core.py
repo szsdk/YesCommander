@@ -55,7 +55,21 @@ def inject_command(cmd):
 
 
 class BaseCommand:
-    def __contains__(self, keywords) -> bool:
+    def match(self, keywords) -> bool:
+        return False
+
+    def copy_clipboard(self) -> str:
+        return ""
+
+    def preview(self) -> dict:
+        return {}
+
+    def result(self) -> None:
+        ...
+
+
+class BaseAsyncCommand:
+    async def match(self, keywords) -> bool:
         return False
 
     def copy_clipboard(self) -> str:
@@ -88,7 +102,7 @@ class Command(BaseCommand):
         self.command = command
         self.description = description
 
-    def __contains__(self, input_words):
+    def match(self, input_words):
         return find_kws_cmd(input_words, self.keywords, self.command)
 
     def str_command(self):
@@ -113,7 +127,7 @@ class DebugCommand(BaseCommand):
     def __init__(self):
         self.info = {}
 
-    def __contains__(self, keywords):
+    def match(self, keywords):
         return len(keywords) == 1 and keywords[0] == "debug"
 
     def str_command(self):
@@ -162,7 +176,7 @@ class FileCommand(BaseCommand):
         self.description = str(description)
         self.filetype = str(filetype)
 
-    def __contains__(self, keywords):
+    def match(self, keywords):
         return find_kws_cmd(keywords, self.keywords, self.filename)
 
     def _open(self):
@@ -223,7 +237,7 @@ class Commander(BaseCommander):
         ans = []
         for cmd in self._commands:
             if isinstance(cmd, BaseCommand):
-                if keywords in cmd:
+                if cmd.match(keywords):
                     ans.append(cmd)
             else:
                 ans.extend(cmd.match(keywords))
@@ -247,7 +261,7 @@ class LazyCommander(BaseLazyCommander):
             if isinstance(c, BaseLazyCommander):
                 c.match(keywords, queue=queue)
             elif isinstance(c, BaseCommand):
-                if keywords in c:
+                if c.match(keywords):
                     queue.put(c)
         default_executor.shutdown(wait=True)
 
