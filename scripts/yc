@@ -11,6 +11,7 @@ from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.output import ColorDepth
 
 import shutil
 from queue import Empty
@@ -57,8 +58,10 @@ lazy_commander = yc_rc.lazy_commander
 
 
 class Preview(Window):
-    def __init__(self, width, height=None):
-        super().__init__(content=FormattedTextControl(), width=width, height=height)
+    def __init__(self, width, height=None, **kargs):
+        super().__init__(
+            content=FormattedTextControl(), width=width, height=height, **kargs
+        )
 
     def update(self, cmd):
         ans = []
@@ -178,12 +181,16 @@ def select_next_(event):
     app.invalidate()
 
 
+exit_cmd = lambda: None
+
+
 @kb.add("enter")
 def execute(event):
     app = event.app
     app.stop_draw()
     app.exit()
-    app.listbox.data.commands[app.listbox.data.getSelected()].result()
+    global exit_cmd
+    exit_cmd = app.listbox.data.getSelection().result
 
 
 @kb.add("c-d")
@@ -191,8 +198,13 @@ def copy(event):
     app = event.app
     app.stop_draw()
     app.exit()
-    pyperclip.copy(app.listbox.data.getSelection().copy_clipboard())
-    print("Copied")
+
+    def copy_cmd():
+        pyperclip.copy(app.listbox.data.getSelection().copy_clipboard())
+        print("Copied")
+
+    global exit_cmd
+    exit_cmd = copy_cmd
 
 
 class StoppableThread(threading.Thread):
@@ -238,63 +250,81 @@ class StoppableThread(threading.Thread):
 
 
 class YCApplication(Application):
-    def __init__(self, width, height=16):
-        prompt_marker = Window(
-            width=2,
-            height=1,
-            content=FormattedTextControl(
-                text=FormattedText([(yc.theme.highlight_color, yc.theme.prompt)])
-            ),
-        )
+    def __init__(self, width, height, **kargs):
         self.textbox_buffer = Buffer(
             on_text_changed=self.searching_text_changed, multiline=False
         )  # Editable buffer.
         self.textbox = Window(
-            content=BufferControl(buffer=self.textbox_buffer), height=1
+            content=BufferControl(buffer=self.textbox_buffer),
+            height=1,
+            get_line_prefix=lambda line_num, wrap_count: FormattedText(
+                [(yc.theme.highlight_color, yc.theme.prompt)]
+            ),
         )
         self.listdata = ListBoxData()
-        if width < 80:
-            self.preview = Preview(width=width - 2, height=7)
-            self.listbox = ListBox(
-                width=width, height=height - self.preview.height, data=self.listdata
-            )
-            root_container = HSplit(
-                [
-                    Frame(self.preview, style=yc.theme.preview.frame_color)
-                    if yc.theme.preview.frame
-                    else self.preview,
-                    VSplit([prompt_marker, self.textbox]),
-                    self.listbox,
-                ]
-            )
-        else:
-            self.preview = Preview(width=int(0.6 * width) - 2, height=height - 3)
-            self.listbox = ListBox(
-                width=width - self.preview.width - 2,
-                height=height - 1,
-                data=self.listdata,
-            )
-            root_container = HSplit(
-                [
-                    VSplit([prompt_marker, self.textbox]),
-                    VSplit(
-                        [
-                            self.listbox,
-                            Frame(self.preview, style=yc.theme.preview.frame_color)
-                            if yc.theme.preview.frame
-                            else self.preview,
-                        ]
-                    ),
-                ]
-            )
+        root_container = self._init_ui(width, height)
         super().__init__(
             layout=Layout(root_container),
             full_screen=False,
             key_bindings=kb,
             erase_when_done=True,
+            **kargs,
         )
 
         self._draw_thread = StoppableThread(self)
+
+    def _init_show_preview(self):
+        if not yc.theme.preview.frame:
+            return self.preview
+        self.preview.width -= 2
+        self.preview.height -= 2
+        return Frame(
+            self.preview,
+            style=f"bg:{yc.theme.preview.bg_color} fg:{yc.theme.preview.frame_color}",
+        )
+
+    def _init_narrow(self, width, height):
+        if height < yc.theme.narrow_height:
+            raise RuntimeError(f"This terminal is too short {height} < {yc.theme.narrow_height}")
+
+        self.preview = Preview(
+            width=width,
+            height=yc.theme.preview.narrow_height,
+            style=f"bg:{yc.theme.preview.bg_color}",
+        )
+        self.listbox = ListBox(
+            width=width, height=yc.theme.narrow_height - self.preview.height, data=self.listdata
+        )
+        root_container = HSplit([self._init_show_preview(), self.textbox, self.listbox])
+        return root_container
+
+    def _init_wide(self, width, height):
+        if height < yc.theme.wide_height:
+            raise RuntimeError(f"This terminal is too short {height} < {yc.theme.wide_height}")
+        self.preview = Preview(
+            width=int(0.6 * width),
+            height=yc.theme.wide_height,
+            style=f"bg:{yc.theme.preview.bg_color}",
+        )
+        self.listbox = ListBox(
+            width=width - self.preview.width,
+            height=yc.theme.wide_height - 1,
+            data=self.listdata,
+        )
+
+        root_container = HSplit(
+            [
+                self.textbox,
+                VSplit([self.listbox, self._init_show_preview()]),
+            ]
+        )
+        return root_container
+
+    def _init_ui(self, width, height):
+        if width < yc.theme.max_narrow_width:
+            return self._init_narrow(width, height)
+        else:
+            return self._init_wide(width, height)
 
     def searching_text_changed(self, buf):
         self._draw_thread.stop()
@@ -316,11 +346,13 @@ class YCApplication(Application):
 
 def main():
     terminal_size = shutil.get_terminal_size((80, 20))
+    app = YCApplication(terminal_size.columns, terminal_size.lines, color_depth=ColorDepth.DEPTH_24_BIT)
     debug_cmd = yc.DebugCommand()
     commander.append(debug_cmd)
     debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
-    app = YCApplication(terminal_size.columns, 19)
+    debug_cmd.info["color depth"] = app.color_depth
     app.run()
+    exit_cmd()
 
 
 if __name__ == "__main__":

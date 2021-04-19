@@ -34,16 +34,20 @@ class Theme(dict):
 theme = Theme()
 theme.marker_color = ""
 theme.preview = Theme()
-theme.preview.bg_color = None
+theme.preview.bg_color = ""
 theme.preview.title_color = None
 theme.preview.frame_color = "black"
 theme.preview.default_marker = "● "
 theme.preview.frame = True
+theme.preview.narrow_height = 8  # Used for narrow layout
 theme.searchbox = Theme()
 theme.searchbox.prompt = "▶ "
 theme.listbox = Theme()
 theme.listbox.ratio = 0.4
 theme.listbox.highlight_color = None
+theme.max_narrow_width = 80
+theme.wide_height = 20
+theme.narrow_height = 20
 # TODO: Add more ui size control parameters
 
 
@@ -56,20 +60,6 @@ def inject_command(cmd):
 
 class BaseCommand:
     def match(self, keywords) -> bool:
-        return False
-
-    def copy_clipboard(self) -> str:
-        return ""
-
-    def preview(self) -> dict:
-        return {}
-
-    def result(self) -> None:
-        ...
-
-
-class BaseAsyncCommand:
-    async def match(self, keywords) -> bool:
         return False
 
     def copy_clipboard(self) -> str:
@@ -125,7 +115,7 @@ class Command(BaseCommand):
 
 class DebugCommand(BaseCommand):
     def __init__(self):
-        self.info = {}
+        self.info = {"theme": theme}
 
     def match(self, keywords):
         return len(keywords) == 1 and keywords[0] == "debug"
