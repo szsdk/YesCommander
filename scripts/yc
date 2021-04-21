@@ -3,23 +3,24 @@
 import time
 
 _STARTUP_t0 = time.time()
+
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.layout.containers import VSplit, HSplit, Window
 from prompt_toolkit.widgets import Frame
+from prompt_toolkit.layout.containers import VSplit, HSplit, Window
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.output import ColorDepth
 
+load_prompt_toolkit_t = time.time() - _STARTUP_t0
+
 import shutil
-from queue import Empty
 import threading
 import multiprocessing
 import sys
 import os
-import pyperclip
 from pathlib import Path
 import yescommander as yc
 
@@ -30,7 +31,6 @@ sys.path.insert(0, str(_CONFIG_PATH))
 
 
 def init_config_folder():
-    import os
 
     if not _CONFIG_PATH.exists():
         _CONFIG_PATH.mkdir(parents=True, exist_ok=True)
@@ -47,10 +47,12 @@ def init_config_folder():
     exit()
 
 
+load_rc_t0 = time.time()
 try:
     import yc_rc
 except ModuleNotFoundError:
     init_config_folder()
+load_rc_t = time.time() - load_rc_t0
 
 
 commander = yc_rc.commander
@@ -132,21 +134,25 @@ class ListBox(Window):
         selected_idx = self.data.getSelected()
         for i in range(*self.get_start_end()):
             cmd = self.data[i]
-            t.extend(
-                [
-                    (
-                        yc.theme.marker_color,
-                        cmd.marker
-                        if hasattr(cmd, "marker")
-                        else yc.theme.default_marker,
-                    ),
-                    (
-                        f"{yc.theme.highlight_color} bold" if selected_idx == i else "",
-                        cmd.str_command(),
-                    ),
-                    ("", "\n"),
-                ]
+            t.append(
+                (
+                    yc.theme.marker_color,
+                    cmd.marker if hasattr(cmd, "marker") else yc.theme.default_marker,
+                )
             )
+            s = cmd.str_command()
+            if isinstance(s, FormattedText):
+                t.extend(s)
+            else:
+                t.append(
+                    (
+                        f"{yc.theme.highlight_color} bold underline"
+                        if selected_idx == i
+                        else "",
+                        s,
+                    )
+                )
+            t.append(("", "\n"))
         self.content.text = FormattedText(t)
 
 
@@ -202,6 +208,8 @@ def copy(event):
     app.exit()
 
     def copy_cmd():
+        import pyperclip
+
         pyperclip.copy(app.listbox.data.getSelection().copy_clipboard())
         print("Copied")
 
@@ -225,12 +233,14 @@ class StoppableThread(threading.Thread):
         return self._stop_event.is_set()
 
     def run(self):
+        from queue import Empty
+
         searching_text = self._app.textbox_buffer.text
         keywords = searching_text.split(" ")
         if len(keywords) == 0:
             commands = []
         else:
-            commands = commander.match(keywords)
+            commands = list(commander.match(keywords))
 
         self._app.update(commands)
 
@@ -361,8 +371,10 @@ def main():
     )
     debug_cmd = yc.DebugCommand()
     commander.append(debug_cmd)
-    debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
+    debug_cmd.info["load prompt_toolkit time (s)"] = load_prompt_toolkit_t
+    debug_cmd.info["load rc time (s)"] = load_rc_t
     debug_cmd.info["color depth"] = app.color_depth
+    debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
     app.run()
     exit_cmd()
 

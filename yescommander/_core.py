@@ -1,12 +1,11 @@
+from typing import Iterable
 import json
 import os
-import sys
-from pathlib import Path
-import concurrent.futures
+import asyncio
 
 __all__ = [
     "BaseCommand",
-    "Command",
+    "Soldier",
     "command",
     "RunCommand",
     "FileCommand",
@@ -17,11 +16,9 @@ __all__ = [
     "RunAsyncCommander",
     "commander",
     "DebugCommand",
-    "default_executor",
     "theme",
+    "inject_command",
 ]
-
-default_executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 
 class Theme(dict):
@@ -60,15 +57,13 @@ theme.highlight_color = "grey"
 
 def inject_command(cmd):
     import fcntl, termios
+    import sys
 
     for c in cmd:
         fcntl.ioctl(sys.stdin, termios.TIOCSTI, c)
 
 
 class BaseCommand:
-    def match(self, keywords) -> bool:
-        return False
-
     def copy_clipboard(self) -> str:
         return ""
 
@@ -77,6 +72,11 @@ class BaseCommand:
 
     def result(self) -> None:
         ...
+
+
+class BaseCommander:
+    def match(self, keywords) -> Iterable[BaseCommand]:
+        raise NotImplementedError()
 
 
 def find_kws_cmd(input_words, keywords, command):
@@ -91,7 +91,7 @@ def find_kws_cmd(input_words, keywords, command):
     return True
 
 
-class Command(BaseCommand):
+class Soldier(BaseCommand, BaseCommander):
     def __init__(self, keywords, command, description):
         if not isinstance(keywords, list):
             keywords = [keywords]
@@ -100,7 +100,9 @@ class Command(BaseCommand):
         self.description = description
 
     def match(self, input_words):
-        return find_kws_cmd(input_words, self.keywords, self.command)
+        if find_kws_cmd(input_words, self.keywords, self.command):
+            return [self]
+        return []
 
     def str_command(self):
         return self.command
@@ -125,7 +127,10 @@ class DebugCommand(BaseCommand):
         self.info = {"theme": theme}
 
     def match(self, keywords):
-        return len(keywords) == 1 and keywords[0] == "debug"
+        if len(keywords) == 1 and keywords[0] == "debug":
+            return [self]
+        else:
+            return []
 
     def str_command(self):
         return "Debug"
@@ -141,9 +146,9 @@ class DebugCommand(BaseCommand):
 
 def _from_tuple(t, *args, **kargs):
     if len(t) == 2:
-        return Command(*t, "", *args, **kargs)
+        return Soldier(*t, "", *args, **kargs)
     elif len(t) == 3:
-        return Command(t[0], t[1], t[2], *args, **kargs)
+        return Soldier(t[0], t[1], t[2], *args, **kargs)
     else:
         raise ValueError("the len of command tuple should be 2 or 3")
 
@@ -152,7 +157,7 @@ def _from_dict(dic):
     kws = dic.get("keywords", [])
     cmd = dic.get("command")
     des = dic.get("description", "")
-    return Command(kws, cmd, des)
+    return Soldier(kws, cmd, des)
 
 
 def command(src, *args, **kargs):
@@ -163,7 +168,6 @@ def command(src, *args, **kargs):
 
 
 class FileCommand(BaseCommand):
-    # editor = "vim %s"
     viewer = {"default": "vim %s"}
 
     def __init__(self, keywords, filename: str, description: str, filetype: str):
@@ -174,7 +178,9 @@ class FileCommand(BaseCommand):
         self.filetype = str(filetype)
 
     def match(self, keywords):
-        return find_kws_cmd(keywords, self.keywords, self.filename)
+        if find_kws_cmd(keywords, self.keywords, self.filename):
+            return [self]
+        return []
 
     def _open(self):
         if self.filetype in self.viewer:
@@ -203,7 +209,7 @@ class FileCommand(BaseCommand):
         os.system(self._open() % self.filename)
 
 
-class RunCommand(Command):
+class RunCommand(Soldier):
     def result(self):
         if isinstance(self.command, str):
             os.system(self.command)
@@ -221,31 +227,21 @@ class RunCommand(Command):
         return ""
 
 
-class BaseCommander:
-    def match(self, keywords):
-        raise NotImplementedError()
-
-
 class Commander(BaseCommander):
     def __init__(self, commands):
         self._commands = commands
 
     def match(self, keywords):
-        ans = []
-        for cmd in self._commands:
-            if isinstance(cmd, BaseCommand):
-                if cmd.match(keywords):
-                    ans.append(cmd)
-            else:
-                ans.extend(cmd.match(keywords))
-        return ans
+        for cmdr in self._commands:
+            for cmd in cmdr.match(keywords):
+                yield cmd
 
     def append(self, cmd):
         self._commands.append(cmd)
 
 
 class BaseLazyCommander:
-    def match(self, keywords, queue):
+    def match(self, keywords, queue) -> None:
         raise NotImplementedError()
 
 
@@ -257,34 +253,19 @@ class LazyCommander(BaseLazyCommander):
         for c in self._commands:
             if isinstance(c, BaseLazyCommander):
                 c.match(keywords, queue=queue)
-            elif isinstance(c, BaseCommand):
-                if c.match(keywords):
-                    queue.put(c)
-        default_executor.shutdown(wait=True)
 
 
 class RunAsyncCommander(BaseLazyCommander):
     def __init__(self, commands):
         self._commands = commands
 
-    async def _single_match(self, cmd, keywords, queue):
-        if isinstance(cmd, BaseLazyCommander):
-            await cmd.match(keywords, queue=queue)
-        elif isinstance(cmd, BaseCommand):
-            if await cmd.match(keywords):
-                queue.put(cmd)
-
     async def _match(self, keywords, queue):
-        import asyncio
-
         for c in asyncio.as_completed(
-            [self._single_match(cmd, keywords, queue) for cmd in self._commands]
+            [cmd.match(keywords, queue=queue) for cmd in self._commands]
         ):
             await c
 
     def match(self, keywords, queue):
-        import asyncio
-
         asyncio.run(self._match(keywords, queue))
 
 
@@ -293,7 +274,7 @@ def commander(input_cmds):
     for i, arg in enumerate(input_cmds, 1):
         if isinstance(arg, tuple):
             cmd = command(arg)
-        elif isinstance(arg, BaseCommand):
+        elif isinstance(arg, BaseCommander):
             cmd = arg
         cmd.index = i
         commands.append(cmd)
