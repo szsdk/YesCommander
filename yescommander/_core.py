@@ -101,8 +101,7 @@ class Soldier(BaseCommand, BaseCommander):
 
     def match(self, input_words):
         if find_kws_cmd(input_words, self.keywords, self.command):
-            return [self]
-        return []
+            yield self
 
     def str_command(self):
         return self.command
@@ -128,9 +127,7 @@ class DebugCommand(BaseCommand):
 
     def match(self, keywords):
         if len(keywords) == 1 and keywords[0] == "debug":
-            return [self]
-        else:
-            return []
+            yield self
 
     def str_command(self):
         return "Debug"
@@ -179,8 +176,7 @@ class FileCommand(BaseCommand):
 
     def match(self, keywords):
         if find_kws_cmd(keywords, self.keywords, self.filename):
-            return [self]
-        return []
+            yield self
 
     def _open(self):
         if self.filetype in self.viewer:
@@ -251,8 +247,7 @@ class LazyCommander(BaseLazyCommander):
 
     def match(self, keywords, queue):
         for c in self._commands:
-            if isinstance(c, BaseLazyCommander):
-                c.match(keywords, queue=queue)
+            c.match(keywords, queue=queue)
 
 
 class RunAsyncCommander(BaseLazyCommander):
