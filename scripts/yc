@@ -4,6 +4,7 @@ import time
 
 _STARTUP_t0 = time.time()
 
+
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.widgets import Frame
@@ -16,6 +17,7 @@ from prompt_toolkit.output import ColorDepth
 
 load_prompt_toolkit_t = time.time() - _STARTUP_t0
 
+from typing import List
 import shutil
 import threading
 import multiprocessing
@@ -76,7 +78,7 @@ class Preview(Window):
 
 class ListBoxData:
     def __init__(self):
-        self.commands = []
+        self.commands: List[yc.BaseCommand] = []
         self._selected = 0
 
     def isSelected(self, i):
@@ -105,6 +107,9 @@ class ListBoxData:
             return None
         return self.commands[self.getSelected()]
 
+    def sorted(self):
+        self.commands = sorted(self.commands, key=lambda x: x.score, reverse=True)
+
 
 class ListBox(Window):
     def __init__(self, width, height=None, data=None, **kargs):
@@ -131,6 +136,7 @@ class ListBox(Window):
 
     def update(self):
         t = []
+        self.data.sorted()
         selected_idx = self.data.getSelected()
         for i in range(*self.get_start_end()):
             cmd = self.data[i]
@@ -369,7 +375,7 @@ def main():
     app = YCApplication(
         terminal_size.columns, terminal_size.lines, color_depth=ColorDepth.DEPTH_24_BIT
     )
-    debug_cmd = yc.DebugCommand()
+    debug_cmd = yc.DebugSoldier()
     commander.append(debug_cmd)
     debug_cmd.info["load prompt_toolkit time (s)"] = load_prompt_toolkit_t
     debug_cmd.info["load rc time (s)"] = load_rc_t

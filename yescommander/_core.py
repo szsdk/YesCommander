@@ -7,15 +7,16 @@ __all__ = [
     "BaseCommand",
     "Soldier",
     "command",
-    "RunCommand",
-    "FileCommand",
+    "RunSoldier",
+    "FileSoldier",
     "BaseCommander",
     "Commander",
     "BaseLazyCommander",
+    "BaseAsyncCommander",
     "LazyCommander",
     "RunAsyncCommander",
     "commander",
-    "DebugCommand",
+    "DebugSoldier",
     "theme",
     "inject_command",
 ]
@@ -64,11 +65,13 @@ def inject_command(cmd):
 
 
 class BaseCommand:
+    score: int
+
     def copy_clipboard(self) -> str:
-        return ""
+        ...
 
     def preview(self) -> dict:
-        return {}
+        ...
 
     def result(self) -> None:
         ...
@@ -98,6 +101,7 @@ class Soldier(BaseCommand, BaseCommander):
         self.keywords = keywords
         self.command = command
         self.description = description
+        self.score = 50
 
     def match(self, input_words):
         if find_kws_cmd(input_words, self.keywords, self.command):
@@ -121,9 +125,10 @@ class Soldier(BaseCommand, BaseCommander):
         inject_command(self.command)
 
 
-class DebugCommand(BaseCommand):
+class DebugSoldier(BaseCommand, BaseCommander):
     def __init__(self):
         self.info = {"theme": theme}
+        self.score = 0
 
     def match(self, keywords):
         if len(keywords) == 1 and keywords[0] == "debug":
@@ -164,7 +169,7 @@ def command(src, *args, **kargs):
         return _from_tuple(src, *args, **kargs)
 
 
-class FileCommand(BaseCommand):
+class FileSoldier(BaseCommand, BaseCommander):
     viewer = {"default": "vim %s"}
 
     def __init__(self, keywords, filename: str, description: str, filetype: str):
@@ -173,6 +178,7 @@ class FileCommand(BaseCommand):
         self.filename = str(filename)
         self.description = str(description)
         self.filetype = str(filetype)
+        self.score = 50
 
     def match(self, keywords):
         if find_kws_cmd(keywords, self.keywords, self.filename):
@@ -205,7 +211,7 @@ class FileCommand(BaseCommand):
         os.system(self._open() % self.filename)
 
 
-class RunCommand(Soldier):
+class RunSoldier(Soldier):
     def result(self):
         if isinstance(self.command, str):
             os.system(self.command)
@@ -248,6 +254,11 @@ class LazyCommander(BaseLazyCommander):
     def match(self, keywords, queue):
         for c in self._commands:
             c.match(keywords, queue=queue)
+
+
+class BaseAsyncCommander:
+    async def match(self, keywords, queue) -> None:
+        raise NotImplementedError()
 
 
 class RunAsyncCommander(BaseLazyCommander):
