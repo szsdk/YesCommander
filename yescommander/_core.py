@@ -1,9 +1,9 @@
 from typing import Iterable
-import json
 import os
 import asyncio
 
 __all__ = [
+    "file_viewer",
     "BaseCommand",
     "Soldier",
     "command",
@@ -169,9 +169,10 @@ def command(src, *args, **kargs):
         return _from_tuple(src, *args, **kargs)
 
 
-class FileSoldier(BaseCommand, BaseCommander):
-    viewer = {"default": "vim %s"}
+file_viewer = {"default": "vim %s"}
 
+
+class FileSoldier(BaseCommand, BaseCommander):
     def __init__(self, keywords, filename: str, description: str, filetype: str):
 
         self.keywords = keywords
@@ -185,9 +186,9 @@ class FileSoldier(BaseCommand, BaseCommander):
             yield self
 
     def _open(self):
-        if self.filetype in self.viewer:
-            return self.viewer[self.filetype]
-        return self.viewer["default"]
+        if self.filetype in file_viewer:
+            return file_viewer[self.filetype]
+        return file_viewer["default"]
 
     def str_command(self):
         return f"edit {self.filename}"
