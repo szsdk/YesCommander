@@ -391,7 +391,7 @@ def main():
     yc_rc.chief_commander.append(debug_cmd)
     debug_cmd.info.update(
         {
-            "config file": _CONFIG_PATH / "yc_rc.py",
+            "config file": str(_CONFIG_PATH / "yc_rc.py"),
             "load prompt_toolkit time (s)": load_prompt_toolkit_t,
             "load rc time (s)": load_rc_t,
             "terminal size": terminal_size,
