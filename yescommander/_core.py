@@ -6,7 +6,6 @@ __all__ = [
     "file_viewer",
     "BaseCommand",
     "Soldier",
-    "command",
     "RunSoldier",
     "FileSoldier",
     "BaseCommander",
@@ -15,7 +14,6 @@ __all__ = [
     "BaseAsyncCommander",
     "LazyCommander",
     "RunAsyncCommander",
-    "commander",
     "DebugSoldier",
     "theme",
     "inject_command",
@@ -53,6 +51,7 @@ theme.max_narrow_width = 80
 theme.wide_height = 20
 theme.narrow_height = 20
 theme.highlight_color = "grey"
+theme.color_depth = 24
 # TODO: Add more ui size control parameters
 
 
@@ -94,14 +93,24 @@ def find_kws_cmd(input_words, keywords, command):
     return True
 
 
+class BaseLazyCommander:
+    def match(self, keywords, queue) -> None:
+        raise NotImplementedError()
+
+
+class BaseAsyncCommander:
+    async def match(self, keywords, queue) -> None:
+        raise NotImplementedError()
+
+
 class Soldier(BaseCommand, BaseCommander):
-    def __init__(self, keywords, command, description):
+    def __init__(self, keywords, command, description, score=50):
         if not isinstance(keywords, list):
             keywords = [keywords]
         self.keywords = keywords
         self.command = command
         self.description = description
-        self.score = 50
+        self.score = score
 
     def match(self, input_words):
         if find_kws_cmd(input_words, self.keywords, self.command):
@@ -124,11 +133,18 @@ class Soldier(BaseCommand, BaseCommander):
     def result(self):
         inject_command(self.command)
 
+    @classmethod
+    def from_dict(cls, dic):
+        kws = dic.get("keywords", [])
+        cmd = dic.get("command")
+        des = dic.get("description", "")
+        return cls(kws, cmd, des)
+
 
 class DebugSoldier(BaseCommand, BaseCommander):
     def __init__(self):
         self.info = {"theme": theme}
-        self.score = 0
+        self.score = -1000
 
     def match(self, keywords):
         if len(keywords) == 1 and keywords[0] == "debug":
@@ -146,40 +162,19 @@ class DebugSoldier(BaseCommand, BaseCommander):
         pprint(self.info)
 
 
-def _from_tuple(t, *args, **kargs):
-    if len(t) == 2:
-        return Soldier(*t, "", *args, **kargs)
-    elif len(t) == 3:
-        return Soldier(t[0], t[1], t[2], *args, **kargs)
-    else:
-        raise ValueError("the len of command tuple should be 2 or 3")
-
-
-def _from_dict(dic):
-    kws = dic.get("keywords", [])
-    cmd = dic.get("command")
-    des = dic.get("description", "")
-    return Soldier(kws, cmd, des)
-
-
-def command(src, *args, **kargs):
-    if isinstance(src, dict):
-        return _from_dict(src)
-    elif isinstance(src, tuple):
-        return _from_tuple(src, *args, **kargs)
-
-
 file_viewer = {"default": "vim %s"}
 
 
 class FileSoldier(BaseCommand, BaseCommander):
-    def __init__(self, keywords, filename: str, description: str, filetype: str):
+    def __init__(
+        self, keywords, filename: str, description: str, filetype: str, score=50
+    ):
 
         self.keywords = keywords
         self.filename = str(filename)
         self.description = str(description)
         self.filetype = str(filetype)
-        self.score = 50
+        self.score = score
 
     def match(self, keywords):
         if find_kws_cmd(keywords, self.keywords, self.filename):
@@ -188,6 +183,9 @@ class FileSoldier(BaseCommand, BaseCommander):
     def _open(self):
         if self.filetype in file_viewer:
             return file_viewer[self.filetype]
+        print(
+            f"Warning: cannot find viewer for filetype: {self.filetype}, opening with `{file_viewer['default']}`"
+        )
         return file_viewer["default"]
 
     def str_command(self):
@@ -197,7 +195,6 @@ class FileSoldier(BaseCommand, BaseCommander):
         ans = {
             "file": self.filename,
             "file type": self.filetype,
-            "open command": self._open(),
         }
         if self.description != "":
             ans["description"] = self.description
@@ -243,11 +240,6 @@ class Commander(BaseCommander):
         self._commands.append(cmd)
 
 
-class BaseLazyCommander:
-    def match(self, keywords, queue) -> None:
-        raise NotImplementedError()
-
-
 class LazyCommander(BaseLazyCommander):
     def __init__(self, commands):
         self._commands = commands
@@ -255,11 +247,6 @@ class LazyCommander(BaseLazyCommander):
     def match(self, keywords, queue):
         for c in self._commands:
             c.match(keywords, queue=queue)
-
-
-class BaseAsyncCommander:
-    async def match(self, keywords, queue) -> None:
-        raise NotImplementedError()
 
 
 class RunAsyncCommander(BaseLazyCommander):
@@ -274,15 +261,3 @@ class RunAsyncCommander(BaseLazyCommander):
 
     def match(self, keywords, queue):
         asyncio.run(self._match(keywords, queue))
-
-
-def commander(input_cmds):
-    commands = []
-    for i, arg in enumerate(input_cmds, 1):
-        if isinstance(arg, tuple):
-            cmd = command(arg)
-        elif isinstance(arg, BaseCommander):
-            cmd = arg
-        cmd.index = i
-        commands.append(cmd)
-    return Commander(commands)

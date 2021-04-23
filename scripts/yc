@@ -57,14 +57,18 @@ except ModuleNotFoundError:
 load_rc_t = time.time() - load_rc_t0
 
 
-commander = yc_rc.commander
-lazy_commander = yc_rc.lazy_commander
+# commander = yc_rc.commander
+# lazy_commander = yc_rc.lazy_commander
 
 
 class Preview(Window):
     def __init__(self, width, height=None, **kargs):
         super().__init__(
-            content=FormattedTextControl(), width=width, height=height, wrap_lines=True, **kargs
+            content=FormattedTextControl(),
+            width=width,
+            height=height,
+            wrap_lines=True,
+            **kargs,
         )
 
     def update(self, cmd):
@@ -246,13 +250,13 @@ class StoppableThread(threading.Thread):
         if len(keywords) == 0:
             commands = []
         else:
-            commands = list(commander.match(keywords))
+            commands = list(yc_rc.chief_commander.match(keywords))
 
         self._app.update(commands)
 
         queue = multiprocessing.Queue()
         proc = multiprocessing.Process(
-            target=lazy_commander.match, args=(keywords, queue)
+            target=yc_rc.lazy_commander.match, args=(keywords, queue)
         )
         proc.start()
         while not self.stopped():
@@ -319,6 +323,7 @@ class YCApplication(Application):
             style=f"bg:{yc.theme.listbox.bg_color}",
         )
         root_container = HSplit([self._init_show_preview(), self.textbox, self.listbox])
+        self.layout_mode = "narrow"
         return root_container
 
     def _init_wide(self, width, height):
@@ -344,6 +349,7 @@ class YCApplication(Application):
                 VSplit([self.listbox, self._init_show_preview()]),
             ]
         )
+        self.layout_mode = "wide"
         return root_container
 
     def _init_ui(self, width, height):
@@ -369,17 +375,30 @@ class YCApplication(Application):
     def stop_draw(self):
         self._draw_thread.stop()
 
+_color_depth = {
+        24: ColorDepth.DEPTH_24_BIT,
+        8: ColorDepth.DEPTH_8_BIT,
+        4: ColorDepth.DEPTH_4_BIT,
+        1: ColorDepth.DEPTH_1_BIT,
+        }
 
 def main():
     terminal_size = shutil.get_terminal_size((80, 20))
     app = YCApplication(
-        terminal_size.columns, terminal_size.lines, color_depth=ColorDepth.DEPTH_24_BIT
+        terminal_size.columns, terminal_size.lines, color_depth=_color_depth[yc.theme.color_depth]
     )
     debug_cmd = yc.DebugSoldier()
-    commander.append(debug_cmd)
-    debug_cmd.info["load prompt_toolkit time (s)"] = load_prompt_toolkit_t
-    debug_cmd.info["load rc time (s)"] = load_rc_t
-    debug_cmd.info["color depth"] = app.color_depth
+    yc_rc.chief_commander.append(debug_cmd)
+    debug_cmd.info.update(
+        {
+            "config file": _CONFIG_PATH / "yc_rc.py",
+            "load prompt_toolkit time (s)": load_prompt_toolkit_t,
+            "load rc time (s)": load_rc_t,
+            "terminal size": terminal_size,
+            "file type viewer": yc.file_viewer,
+            "layout mode": app.layout_mode
+        }
+    )
     debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
     app.run()
     exit_cmd()
