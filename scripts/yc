@@ -207,6 +207,7 @@ def exit_(event: KeyPressEvent) -> None:
 
 @kb.add("c-p")
 @kb.add("up")
+@kb.add("s-tab")
 def select_previous_(event: KeyPressEvent) -> None:
     app = cast(YCApplication, event.app)
     app.listdata.selectPrevious()
@@ -216,6 +217,7 @@ def select_previous_(event: KeyPressEvent) -> None:
 
 @kb.add("c-n")
 @kb.add("down")
+@kb.add("tab")
 def select_next_(event: KeyPressEvent) -> None:
     app = cast(YCApplication, event.app)
     app.listdata.selectNext()

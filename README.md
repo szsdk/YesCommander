@@ -13,3 +13,10 @@ pip install .
 ```
 yc
 ```
+
+### Shortcut
+
+- `enter`: execute a command
+- `ctrl-n`/`down`/`tab`: select the next command
+- `ctrl-p`/`up`/`shift-tab`: select the previous command
+- `ctrl-d`: copy the command
