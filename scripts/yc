@@ -261,13 +261,13 @@ class StoppableThread(threading.Thread):
         if len(keywords) == 0:
             commands = []
         else:
-            commands = list(yc_rc.chief_commander.match(keywords))
+            commands = list(yc_rc.chief_commander.order(keywords))
 
         self._app.update(commands)
 
         queue: multiprocessing.Queue[yc.BaseCommand] = multiprocessing.Queue()
         proc = multiprocessing.Process(
-            target=yc_rc.lazy_commander.match, args=(keywords, queue)
+            target=yc_rc.lazy_commander.order, args=(keywords, queue)
         )
         proc.start()
         while not self.stopped():

@@ -41,15 +41,33 @@ class BaseCommand:
 
 
 class BaseCommander:
-    def match(self, keywords: List[str]) -> Iterable[BaseCommand]:
+    """
+    `BaseCommander` is a class which implements a `order` method. The `order`
+    method takes a list of keywords as input, then return an iterable object
+    which generates a set of `BaseCommand` object.
+    """
+
+    def order(self, keywords: List[str]) -> Iterable[BaseCommand]:
         raise NotImplementedError()
 
 
 class BaseLazyCommander:
-    def match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    """
+    `BaseLazyCommander` is a class which implements a `order` method. The
+    `order` method takes a list of keywords and a `Queue` object as input.
+    Instead of returning commands, generated commands should be put into the
+    queue.
+    """
+
+    def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         raise NotImplementedError()
 
 
 class BaseAsyncCommander:
-    async def match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    """
+    `BaseAsyncCommander` is a class which implements a **async** `order` method
+    which has the same interface as `BaseLazyCommander`'s.
+    """
+
+    async def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         raise NotImplementedError()

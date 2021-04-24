@@ -69,7 +69,7 @@ class Soldier(BaseCommand, BaseCommander):
         self.description = description
         self.score = score
 
-    def match(self, keywords: List[str]) -> Iterable[Soldier]:
+    def order(self, keywords: List[str]) -> Iterable[Soldier]:
         if find_kws_cmd(keywords, self.keywords, self.command):
             yield self
 
@@ -103,7 +103,7 @@ class DebugSoldier(BaseCommand, BaseCommander):
         self.info: Dict[str, Any] = {"theme": theme}
         self.score = -1000
 
-    def match(self, keywords: List[str]) -> Iterable[DebugSoldier]:
+    def order(self, keywords: List[str]) -> Iterable[DebugSoldier]:
         if len(keywords) == 1 and keywords[0] == "debug":
             yield self
 
@@ -136,7 +136,7 @@ class FileSoldier(BaseCommand, BaseCommander):
         self.filetype = str(filetype)
         self.score = score
 
-    def match(self, keywords: List[str]) -> Iterable[FileSoldier]:
+    def order(self, keywords: List[str]) -> Iterable[FileSoldier]:
         if find_kws_cmd(keywords, self.keywords, self.filename):
             yield self
 
@@ -191,9 +191,9 @@ class Commander(BaseCommander):
     def __init__(self, commands: List[BaseCommander]) -> None:
         self._commands = commands
 
-    def match(self, keywords: List[str]) -> Iterable[BaseCommand]:
+    def order(self, keywords: List[str]) -> Iterable[BaseCommand]:
         for cmdr in self._commands:
-            for cmd in cmdr.match(keywords):
+            for cmd in cmdr.order(keywords):
                 yield cmd
 
     def append(self, cmd: BaseCommander) -> None:
@@ -204,20 +204,20 @@ class LazyCommander(BaseLazyCommander):
     def __init__(self, commands: Iterable[BaseAsyncCommander]) -> None:
         self._commands = commands
 
-    def match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         for c in self._commands:
-            c.match(keywords, queue=queue)
+            c.order(keywords, queue=queue)
 
 
 class RunAsyncCommander(BaseLazyCommander):
     def __init__(self, commands: Iterable[BaseAsyncCommander]) -> None:
         self._commands = commands
 
-    async def _match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    async def _order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         for c in asyncio.as_completed(
-            [cmd.match(keywords, queue=queue) for cmd in self._commands]
+            [cmd.order(keywords, queue=queue) for cmd in self._commands]
         ):
             await c
 
-    def match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
-        asyncio.run(self._match(keywords, queue))
+    def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+        asyncio.run(self._order(keywords, queue))
