@@ -1,3 +1,6 @@
+"""
+This file defines the interfaces of "Command" and three types of "Commanders".
+"""
 from queue import Queue
 from typing import Dict, Iterable, List
 
@@ -13,15 +16,27 @@ class BaseCommand:
     score: int
 
     def copy_clipboard(self) -> str:
+        """
+        Return the string to be copied.
+        """
         return ""
 
     def preview(self) -> Dict[str, str]:
+        """
+        Return a dictionary for previewing
+        """
         return {}
 
     def result(self) -> None:
+        """
+        Action to be performed for the command.
+        """
         ...
 
-    def str_command(self) -> str:
+    def __str__(self) -> str:
+        """
+        Return the string for listing.
+        """
         return ""
 
 

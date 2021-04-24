@@ -1,3 +1,6 @@
+"""
+This file includes most basic `Commander` classes.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -70,14 +73,14 @@ class Soldier(BaseCommand, BaseCommander):
         if find_kws_cmd(keywords, self.keywords, self.command):
             yield self
 
-    def str_command(self) -> str:
+    def __str__(self) -> str:
         return self.command
 
     def copy_clipboard(self) -> str:
-        return self.str_command()
+        return str(self)
 
     def preview(self) -> Dict[str, str]:
-        ans = {"command": self.str_command()}
+        ans = {"command": str(self)}
         if len(self.description) > 0:
             ans["description"] = self.description
         if len(self.keywords) > 0:
@@ -104,7 +107,7 @@ class DebugSoldier(BaseCommand, BaseCommander):
         if len(keywords) == 1 and keywords[0] == "debug":
             yield self
 
-    def str_command(self) -> str:
+    def __str__(self) -> str:
         return "Debug"
 
     def preview(self) -> Dict[str, str]:
@@ -145,7 +148,7 @@ class FileSoldier(BaseCommand, BaseCommander):
         )
         return file_viewer["default"]
 
-    def str_command(self) -> str:
+    def __str__(self) -> str:
         return f"edit {self.filename}"
 
     def preview(self) -> Dict[str, str]:
@@ -173,7 +176,7 @@ class RunSoldier(Soldier):
         else:
             self.command()
 
-    def str_command(self) -> str:
+    def __str__(self) -> str:
         if isinstance(self.command, str):
             ans = "run: " + self.command
         else:
