@@ -409,14 +409,16 @@ def main() -> None:
     debug_cmd.info.update(
         {
             "config file": str(_CONFIG_PATH / "yc_rc.py"),
-            "load prompt_toolkit time (s)": load_prompt_toolkit_t,
-            "load rc time (s)": load_rc_t,
+            "loading time (s)": {
+                "prompt_toolkit": load_prompt_toolkit_t,
+                "rc": load_rc_t,
+            },
             "terminal size": terminal_size,
             "file type viewer": yc.file_viewer,
             "layout mode": app.layout_mode,
         }
     )
-    debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0
+    debug_cmd.info["loading time (s)"]["total"] = time.time() - _STARTUP_t0
     app.run()
     exit_cmd()
 
