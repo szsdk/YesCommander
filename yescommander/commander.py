@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from pprint import pformat, pprint
 from queue import Queue
 from typing import Any, Dict, Iterable, List, Type, TypeVar, Union, cast, no_type_check
 
@@ -175,6 +174,10 @@ class RunSoldier(Soldier):
 
 
 class Commander(BaseCommander):
+    """
+    `Commander` object is in charge of a list of other `BaseCommander` objects.
+    """
+
     def __init__(self, commands: List[BaseCommander]) -> None:
         self._commands = commands
 
@@ -183,7 +186,7 @@ class Commander(BaseCommander):
             for cmd in cmdr.order(keywords):
                 yield cmd
 
-    def append(self, cmd: BaseCommander) -> None:
+    def recruit(self, cmd: BaseCommander) -> None:
         self._commands.append(cmd)
 
 
@@ -195,7 +198,7 @@ class LazyCommander(BaseLazyCommander):
         for c in self._commands:
             c.order(keywords, queue=queue)
 
-    def append(self, cmd: BaseLazyCommander) -> None:
+    def recruit(self, cmd: BaseLazyCommander) -> None:
         self._commands.append(cmd)
 
 
@@ -212,5 +215,5 @@ class RunAsyncCommander(BaseLazyCommander):
     def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         asyncio.run(self._order(keywords, queue))
 
-    def append(self, cmd: BaseAsyncCommander) -> None:
+    def recruit(self, cmd: BaseAsyncCommander) -> None:
         self._commands.append(cmd)

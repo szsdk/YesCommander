@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+"""
+This is the terminal interface of YesCommander.
+"""
+
 from __future__ import annotations
 
 import time
@@ -440,7 +444,7 @@ def main() -> None:
         color_depth=_color_depth[yc.theme.color_depth],
     )
     debug_cmd = DebugSoldier()
-    yc_rc.chief_commander.append(debug_cmd)
+    yc_rc.chief_commander.recruit(debug_cmd)
     debug_cmd.info.update(
         {
             "config file": str(_CONFIG_PATH / "yc_rc.py"),
