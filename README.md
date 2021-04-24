@@ -13,4 +13,3 @@ pip install .
 ```
 yc
 ```
-

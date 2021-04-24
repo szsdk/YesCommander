@@ -14,4 +14,6 @@ else:
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-from ._core import *
+from .commander import *
+from .core import *
+from .theme import *

@@ -7,23 +7,30 @@ _STARTUP_t0 = time.time()
 
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.widgets import Frame
-from prompt_toolkit.layout.containers import VSplit, HSplit, Window
-from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
+from prompt_toolkit.layout.containers import (
+    AnyContainer,
+    Container,
+    HSplit,
+    VSplit,
+    Window,
+)
+from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.layout import Layout
-from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.output import ColorDepth
+from prompt_toolkit.widgets import Frame
 
 load_prompt_toolkit_t = time.time() - _STARTUP_t0
 
-from typing import List
-import shutil
-import threading
 import multiprocessing
-import sys
 import os
+import shutil
+import sys
+import threading
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast, no_type_check
+
 import yescommander as yc
 
 multiprocessing.set_start_method("fork")
@@ -32,7 +39,7 @@ _CONFIG_PATH = Path("~/.config/yescommander/").expanduser()
 sys.path.insert(0, str(_CONFIG_PATH))
 
 
-def init_config_folder():
+def init_config_folder() -> None:
 
     if not _CONFIG_PATH.exists():
         _CONFIG_PATH.mkdir(parents=True, exist_ok=True)
@@ -57,12 +64,8 @@ except ModuleNotFoundError:
 load_rc_t = time.time() - load_rc_t0
 
 
-# commander = yc_rc.commander
-# lazy_commander = yc_rc.lazy_commander
-
-
 class Preview(Window):
-    def __init__(self, width, height=None, **kargs):
+    def __init__(self, width: int, height: Optional[int] = None, **kargs: Any) -> None:
         super().__init__(
             content=FormattedTextControl(),
             width=width,
@@ -71,52 +74,54 @@ class Preview(Window):
             **kargs,
         )
 
-    def update(self, cmd):
+    def update(self, cmd: yc.BaseCommand) -> None:
         ans = []
         for k, v in cmd.preview().items():
             ans.extend(
                 [(yc.theme.preview.title_color, k), ("", "\n"), ("", v), ("", "\n")]
             )
-        self.content.text = FormattedText(ans)
+        cast(FormattedTextControl, self.content).text = FormattedText(ans)
 
 
 class ListBoxData:
-    def __init__(self):
+    def __init__(self) -> None:
         self.commands: List[yc.BaseCommand] = []
         self._selected = 0
 
-    def isSelected(self, i):
+    def isSelected(self, i: int) -> bool:
         if self._selected is None:
             return False
         return self._selected == i
 
-    def selectNext(self):
+    def selectNext(self) -> None:
         self._selected = (self._selected + 1) % len(self)
 
-    def selectPrevious(self):
+    def selectPrevious(self) -> None:
         self._selected = (self._selected - 1) % len(self)
 
-    def getSelected(self):
+    def getSelected(self) -> int:
         self._selected = min(self._selected, len(self.commands) - 1)
         return self._selected
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.commands)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> yc.BaseCommand:
         return self.commands[idx]
 
-    def getSelection(self):
+    def getSelection(self) -> Optional[yc.BaseCommand]:
         if len(self.commands) == 0:
             return None
         return self.commands[self.getSelected()]
 
-    def sorted(self):
+    def sorted(self) -> None:
         self.commands = sorted(self.commands, key=lambda x: x.score, reverse=True)
 
 
 class ListBox(Window):
-    def __init__(self, width, height=None, data=None, **kargs):
+    def __init__(
+        self, width: int, height: int, data: Optional[ListBoxData] = None, **kargs: Any
+    ) -> None:
         super().__init__(
             content=FormattedTextControl(), width=width, height=height, **kargs
         )
@@ -126,19 +131,20 @@ class ListBox(Window):
         else:
             self.data = data
 
-    def get_start_end(self):
+    def get_start_end(self) -> Tuple[int, int]:
         selectedIndex = self.data.getSelected()
-        halfHeight = self.height // 2
+        height = cast(int, self.height)
+        halfHeight = height // 2
         if selectedIndex < halfHeight:
-            start, end = 0, min(self.height, len(self.data))
+            start, end = 0, min(height, len(self.data))
         elif selectedIndex + halfHeight >= len(self.data):
-            start, end = max(0, len(self.data) - self.height), len(self.data)
+            start, end = max(0, len(self.data) - height), len(self.data)
         else:
             start = max(0, selectedIndex - halfHeight)
-            end = min(start + self.height, len(self.data))
+            end = min(start + height, len(self.data))
         return start, end
 
-    def update(self):
+    def update(self) -> None:
         t = []
         self.data.sorted()
         selected_idx = self.data.getSelected()
@@ -147,7 +153,7 @@ class ListBox(Window):
             t.append(
                 (
                     yc.theme.marker_color,
-                    cmd.marker if hasattr(cmd, "marker") else yc.theme.default_marker,
+                    cmd.marker if hasattr(cmd, "marker") else yc.theme.default_marker,  # type: ignore
                 )
             )
             s = cmd.str_command()
@@ -163,28 +169,29 @@ class ListBox(Window):
                     )
                 )
             t.append(("", "\n"))
-        self.content.text = FormattedText(t)
+        self.content.text = FormattedText(t)  # type: ignore
 
 
 kb = KeyBindings()
 
 
 @kb.add("c-c")
-def exit_(event):
+def exit_(event: KeyPressEvent) -> None:
     """
     Pressing Ctrl-Q will exit the user interface.
 
     Setting a return value means: quit the event loop that drives the user
     interface and return this value from the `Application.run()` call.
     """
-    event.app.stop_draw()
-    event.app.exit()
+    app = cast(YCApplication, event.app)
+    app.stop_draw()
+    app.exit()
 
 
 @kb.add("c-p")
 @kb.add("up")
-def select_previous_(event):
-    app = event.app
+def select_previous_(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
     app.listdata.selectPrevious()
     app.update()
     app.invalidate()
@@ -192,36 +199,40 @@ def select_previous_(event):
 
 @kb.add("c-n")
 @kb.add("down")
-def select_next_(event):
-    app = event.app
+def select_next_(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
     app.listdata.selectNext()
     app.update()
     app.invalidate()
 
 
-exit_cmd = lambda: None
+exit_cmd: Callable[[], None] = lambda: None
 
 
 @kb.add("enter")
-def execute(event):
-    app = event.app
+def execute(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
     app.stop_draw()
     app.exit()
     global exit_cmd
-    exit_cmd = app.listbox.data.getSelection().result
+    selection = app.listbox.data.getSelection()
+    if selection is not None:
+        exit_cmd = selection.result
 
 
 @kb.add("c-d")
-def copy(event):
-    app = event.app
+def copy(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
     app.stop_draw()
     app.exit()
 
-    def copy_cmd():
-        import pyperclip
+    def copy_cmd() -> None:
+        import pyperclip  # type: ignore
 
-        pyperclip.copy(app.listbox.data.getSelection().copy_clipboard())
-        print("Copied")
+        selection = app.listbox.data.getSelection()
+        if selection is not None:
+            pyperclip.copy(selection.copy_clipboard())
+            print("Copied")
 
     global exit_cmd
     exit_cmd = copy_cmd
@@ -231,18 +242,18 @@ class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
     regularly for the stopped() condition."""
 
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, app: "YCApplication", *args: Any, **kwargs: Any) -> None:
         super(StoppableThread, self).__init__(*args, **kwargs)
         self._stop_event = threading.Event()
         self._app = app
 
-    def stop(self):
+    def stop(self) -> None:
         self._stop_event.set()
 
-    def stopped(self):
+    def stopped(self) -> bool:
         return self._stop_event.is_set()
 
-    def run(self):
+    def run(self) -> None:
         from queue import Empty
 
         searching_text = self._app.textbox_buffer.text
@@ -254,7 +265,7 @@ class StoppableThread(threading.Thread):
 
         self._app.update(commands)
 
-        queue = multiprocessing.Queue()
+        queue: multiprocessing.Queue[yc.BaseCommand] = multiprocessing.Queue()
         proc = multiprocessing.Process(
             target=yc_rc.lazy_commander.match, args=(keywords, queue)
         )
@@ -264,15 +275,15 @@ class StoppableThread(threading.Thread):
                 n = queue.get(False)
                 commands.append(n)
                 self._app.update(commands)
-            except Empty as e:
+            except Empty:
                 if not proc.is_alive():
                     time.sleep(0.01)
                 pass
         proc.terminate()
 
 
-class YCApplication(Application):
-    def __init__(self, width, height, **kargs):
+class YCApplication(Application[None]):
+    def __init__(self, width: int, height: int, **kargs: Any) -> None:
         self.textbox_buffer = Buffer(
             on_text_changed=self.searching_text_changed, multiline=False
         )  # Editable buffer.
@@ -295,17 +306,17 @@ class YCApplication(Application):
 
         self._draw_thread = StoppableThread(self)
 
-    def _init_show_preview(self):
+    def _init_show_preview(self) -> AnyContainer:
         if not yc.theme.preview.frame:
             return self.preview
-        self.preview.width -= 2
-        self.preview.height -= 2
+        self.preview.width = cast(int, self.preview.width) - 2
+        self.preview.height = cast(int, self.preview.height) - 2
         return Frame(
             self.preview,
             style=f"bg:{yc.theme.preview.bg_color} fg:{yc.theme.preview.frame_color}",
         )
 
-    def _init_narrow(self, width, height):
+    def _init_narrow(self, width: int, height: int) -> Container:
         if height < yc.theme.narrow_height:
             raise RuntimeError(
                 f"This terminal is too short {height} < {yc.theme.narrow_height}"
@@ -326,7 +337,7 @@ class YCApplication(Application):
         self.layout_mode = "narrow"
         return root_container
 
-    def _init_wide(self, width, height):
+    def _init_wide(self, width: int, height: int) -> Container:
         if height < yc.theme.wide_height:
             raise RuntimeError(
                 f"This terminal is too short {height} < {yc.theme.wide_height}"
@@ -337,7 +348,7 @@ class YCApplication(Application):
             style=f"bg:{yc.theme.preview.bg_color}",
         )
         self.listbox = ListBox(
-            width=width - self.preview.width,
+            width=width - cast(int, self.preview.width),
             height=yc.theme.wide_height - 1,
             data=self.listdata,
             style=f"bg:{yc.theme.listbox.bg_color}",
@@ -352,40 +363,46 @@ class YCApplication(Application):
         self.layout_mode = "wide"
         return root_container
 
-    def _init_ui(self, width, height):
+    def _init_ui(self, width: int, height: int) -> Container:
         if width < yc.theme.max_narrow_width:
             return self._init_narrow(width, height)
         else:
             return self._init_wide(width, height)
 
-    def searching_text_changed(self, buf):
+    def searching_text_changed(self, buf: Buffer) -> None:
         self._draw_thread.stop()
         if self._draw_thread.is_alive():
             self._draw_thread.join()
         self._draw_thread = StoppableThread(self)
         self._draw_thread.start()
 
-    def update(self, commands=None):
+    def update(self, commands: Optional[List[yc.BaseCommand]] = None) -> None:
         if commands is not None:
             self.listdata.commands = commands
         self.listbox.update()
-        self.preview.update(self.listdata.getSelection())
+        selection = self.listdata.getSelection()
+        if selection is not None:
+            self.preview.update(selection)
         self.invalidate()
 
-    def stop_draw(self):
+    def stop_draw(self) -> None:
         self._draw_thread.stop()
 
-_color_depth = {
-        24: ColorDepth.DEPTH_24_BIT,
-        8: ColorDepth.DEPTH_8_BIT,
-        4: ColorDepth.DEPTH_4_BIT,
-        1: ColorDepth.DEPTH_1_BIT,
-        }
 
-def main():
+_color_depth = {
+    24: ColorDepth.DEPTH_24_BIT,
+    8: ColorDepth.DEPTH_8_BIT,
+    4: ColorDepth.DEPTH_4_BIT,
+    1: ColorDepth.DEPTH_1_BIT,
+}
+
+
+def main() -> None:
     terminal_size = shutil.get_terminal_size((80, 20))
     app = YCApplication(
-        terminal_size.columns, terminal_size.lines, color_depth=_color_depth[yc.theme.color_depth]
+        terminal_size.columns,
+        terminal_size.lines,
+        color_depth=_color_depth[yc.theme.color_depth],
     )
     debug_cmd = yc.DebugSoldier()
     yc_rc.chief_commander.append(debug_cmd)
@@ -396,7 +413,7 @@ def main():
             "load rc time (s)": load_rc_t,
             "terminal size": terminal_size,
             "file type viewer": yc.file_viewer,
-            "layout mode": app.layout_mode
+            "layout mode": app.layout_mode,
         }
     )
     debug_cmd.info["startup time (s)"] = time.time() - _STARTUP_t0

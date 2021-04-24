@@ -1,4 +1,5 @@
 from typing import List
+
 import yescommander as yc
 
 commanders: List[yc.BaseCommander] = [

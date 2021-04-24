@@ -1,94 +1,33 @@
 from __future__ import annotations
-from typing import Iterable, List, no_type_check, Any, Dict, TypeVar, Type, Union, cast
-import os
+
 import asyncio
-from pprint import pprint, pformat
-from multiprocessing import Queue
+import os
+from pprint import pformat, pprint
+from queue import Queue
+from typing import Any, Dict, Iterable, List, Type, TypeVar, Union, cast, no_type_check
+
+from .core import (
+    BaseAsyncCommander,
+    BaseCommand,
+    BaseCommander,
+    BaseLazyCommander,
+    file_viewer,
+    inject_command,
+)
+from .theme import Theme, theme
 
 __all__ = [
-    "file_viewer",
-    "BaseCommand",
     "Soldier",
     "RunSoldier",
     "FileSoldier",
-    "BaseCommander",
     "Commander",
-    "BaseLazyCommander",
-    "BaseAsyncCommander",
     "LazyCommander",
     "RunAsyncCommander",
     "DebugSoldier",
-    "theme",
-    "inject_command",
 ]
 
 
-class Theme:
-    """dot.notation access to dictionary attributes"""
-
-    def __setattr__(self, attr: str, value: Any) -> None:
-        self.__dict__[attr] = value
-
-    def __getattr__(self, attr: str) -> Any:
-        return self.__dict__[attr]
-
-    def to_dict(self) -> Dict[Any, Any]:
-        ans = {}
-        for k, v in self.__dict__.items():
-            ans[k] = v.to_dict() if isinstance(v, Theme) else v
-        return ans
-
-
-theme = Theme()
-theme.marker_color = ""
-theme.preview = Theme()
-theme.preview.bg_color = ""
-theme.preview.title_color = ""
-theme.preview.frame_color = "black"
-theme.preview.frame = True
-theme.preview.narrow_height = 8  # Used for narrow layout
-theme.searchbox = Theme()
-theme.searchbox.prompt = "> "
-theme.default_marker = "- "
-theme.listbox = Theme()
-theme.listbox.ratio = 0.4
-theme.listbox.highlight_color = ""
-theme.listbox.bg_color = ""
-theme.max_narrow_width = 80
-theme.wide_height = 20
-theme.narrow_height = 20
-theme.highlight_color = "grey"
-theme.color_depth = 24
-# TODO: Add more ui size control parameters
-
-
-def inject_command(cmd: str) -> None:
-    import fcntl, termios
-    import sys
-
-    for c in cmd:
-        fcntl.ioctl(sys.stdin, termios.TIOCSTI, c.encode())
-
-
-class BaseCommand:
-    score: int
-
-    def copy_clipboard(self) -> str:
-        ...
-
-    def preview(self) -> Dict[str, str]:
-        ...
-
-    def result(self) -> None:
-        ...
-
-
-class BaseCommander:
-    def match(self, keywords: List[str]) -> Iterable[BaseCommand]:
-        raise NotImplementedError()
-
-
-def find_kws_cmd(input_words:List[str], keywords: List[str], command:str) -> bool:
+def find_kws_cmd(input_words: List[str], keywords: List[str], command: str) -> bool:
     for k in input_words:
         findQ = False
         for kw in keywords:
@@ -100,17 +39,8 @@ def find_kws_cmd(input_words:List[str], keywords: List[str], command:str) -> boo
     return True
 
 
-class BaseLazyCommander:
-    def match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
-        raise NotImplementedError()
+T = TypeVar("T", bound="Soldier")
 
-
-class BaseAsyncCommander:
-    async def match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
-        raise NotImplementedError()
-
-
-T = TypeVar('T', bound='Soldier')
 
 class Soldier(BaseCommand, BaseCommander):
     def __init__(
@@ -121,7 +51,7 @@ class Soldier(BaseCommand, BaseCommander):
         self.description = description
         self.score = score
 
-    def match(self, keywords: List[str])-> Iterable[Soldier]:
+    def match(self, keywords: List[str]) -> Iterable[Soldier]:
         if find_kws_cmd(keywords, self.keywords, self.command):
             yield self
 
@@ -131,7 +61,7 @@ class Soldier(BaseCommand, BaseCommander):
     def copy_clipboard(self) -> str:
         return self.str_command()
 
-    def preview(self)->Dict[str, str]:
+    def preview(self) -> Dict[str, str]:
         ans = {"command": self.str_command()}
         if len(self.description) > 0:
             ans["description"] = self.description
@@ -139,11 +69,11 @@ class Soldier(BaseCommand, BaseCommander):
             ans["keywords"] = " ".join(self.keywords)
         return ans
 
-    def result(self)->None:
+    def result(self) -> None:
         inject_command(self.command)
 
     @classmethod
-    def from_dict(cls: Type[T], dic: Dict[str, Union[List[str], str]])->T:
+    def from_dict(cls: Type[T], dic: Dict[str, Union[List[str], str]]) -> T:
         kws = cast(List[str], dic.get("keywords", []))
         cmd = cast(str, dic.get("command"))
         des = cast(str, dic.get("description", ""))
@@ -152,27 +82,24 @@ class Soldier(BaseCommand, BaseCommander):
 
 class DebugSoldier(BaseCommand, BaseCommander):
     def __init__(self) -> None:
-        self.info = {"theme": theme}
+        self.info: Dict[str, Any] = {"theme": theme}
         self.score = -1000
 
     def match(self, keywords: List[str]) -> Iterable[DebugSoldier]:
         if len(keywords) == 1 and keywords[0] == "debug":
             yield self
 
-    def str_command(self)->str:
+    def str_command(self) -> str:
         return "Debug"
 
-    def preview(self)->Dict[str, str]:
+    def preview(self) -> Dict[str, str]:
         return {"print debug infomation": ""}
 
-    def result(self)->None:
+    def result(self) -> None:
         ans = {}
         for k, v in self.info.items():
             ans[k] = v.to_dict() if isinstance(v, Theme) else v
         pprint(ans)
-
-
-file_viewer = {"default": "vim %s"}
 
 
 class FileSoldier(BaseCommand, BaseCommander):
@@ -182,7 +109,7 @@ class FileSoldier(BaseCommand, BaseCommander):
         filename: str,
         description: str,
         filetype: str,
-        score:int=50,
+        score: int = 50,
     ):
 
         self.keywords = keywords
@@ -191,11 +118,11 @@ class FileSoldier(BaseCommand, BaseCommander):
         self.filetype = str(filetype)
         self.score = score
 
-    def match(self, keywords: List[str])->Iterable[FileSoldier]:
+    def match(self, keywords: List[str]) -> Iterable[FileSoldier]:
         if find_kws_cmd(keywords, self.keywords, self.filename):
             yield self
 
-    def _open(self)->str:
+    def _open(self) -> str:
         if self.filetype in file_viewer:
             return file_viewer[self.filetype]
         print(
@@ -203,10 +130,10 @@ class FileSoldier(BaseCommand, BaseCommander):
         )
         return file_viewer["default"]
 
-    def str_command(self)->str:
+    def str_command(self) -> str:
         return f"edit {self.filename}"
 
-    def preview(self)->Dict[str, str]:
+    def preview(self) -> Dict[str, str]:
         ans = {
             "file": self.filename,
             "file type": self.filetype,
@@ -217,15 +144,15 @@ class FileSoldier(BaseCommand, BaseCommander):
             ans["keywords"] = " ".join(self.keywords)
         return ans
 
-    def copy_clipboard(self)->str:
+    def copy_clipboard(self) -> str:
         return self.filename
 
-    def result(self)->None:
+    def result(self) -> None:
         os.system(self._open() % self.filename)
 
 
 class RunSoldier(Soldier):
-    def result(self)->None:
+    def result(self) -> None:
         if isinstance(self.command, str):
             os.system(self.command)
         else:
@@ -238,7 +165,7 @@ class RunSoldier(Soldier):
             ans = self.command.__doc__
         return ans.splitlines()[0]
 
-    def copy_clipboard(self)->str:
+    def copy_clipboard(self) -> str:
         return ""
 
 
@@ -246,12 +173,12 @@ class Commander(BaseCommander):
     def __init__(self, commands: List[BaseCommander]) -> None:
         self._commands = commands
 
-    def match(self, keywords: List[str])->Iterable[BaseCommand]:
+    def match(self, keywords: List[str]) -> Iterable[BaseCommand]:
         for cmdr in self._commands:
             for cmd in cmdr.match(keywords):
                 yield cmd
 
-    def append(self, cmd:BaseCommander)->None:
+    def append(self, cmd: BaseCommander) -> None:
         self._commands.append(cmd)
 
 
@@ -259,7 +186,7 @@ class LazyCommander(BaseLazyCommander):
     def __init__(self, commands: Iterable[BaseAsyncCommander]) -> None:
         self._commands = commands
 
-    def match(self, keywords: List[str], queue:Queue[BaseCommand])->None:
+    def match(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         for c in self._commands:
             c.match(keywords, queue=queue)
 
