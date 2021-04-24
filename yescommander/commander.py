@@ -89,11 +89,13 @@ class Soldier(BaseCommand, BaseCommander):
         inject_command(self.command)
 
     @classmethod
-    def from_dict(cls: Type[T], dic: Dict[str, Union[List[str], str]]) -> T:
-        kws = cast(List[str], dic.get("keywords", []))
-        cmd = cast(str, dic.get("command"))
-        des = cast(str, dic.get("description", ""))
-        return cls(kws, cmd, des)
+    def from_dict(
+        cls: Type[T], dic: Dict[str, Union[List[str], str]], **kwargs: Any
+    ) -> T:
+        ans = {"keywords": [], "command": "", "description": "", "score": 50}
+        ans.update(dic)
+        ans.update(kwargs)
+        return cls(**ans)  # type: ignore
 
 
 class FileSoldier(BaseCommand, BaseCommander):

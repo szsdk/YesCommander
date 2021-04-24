@@ -82,7 +82,13 @@ load_rc_t = time.time() - load_rc_t0
 
 
 class Preview(Window):
-    def __init__(self, width: int, height: Optional[int] = None, **kargs: Any) -> None:
+    def __init__(
+        self,
+        width: int,
+        height: Optional[int] = None,
+        debug_mode: bool = False,
+        **kargs: Any,
+    ) -> None:
         super().__init__(
             content=FormattedTextControl(),
             width=width,
@@ -90,12 +96,22 @@ class Preview(Window):
             wrap_lines=True,
             **kargs,
         )
+        self.debug_mode = debug_mode
 
     def update(self, cmd: yc.BaseCommand) -> None:
         ans = []
         for k, v in cmd.preview().items():
             ans.extend(
                 [(yc.theme.preview.title_color, k), ("", "\n"), ("", v), ("", "\n")]
+            )
+        if self.debug_mode:
+            ans.extend(
+                [
+                    (yc.theme.preview.title_color, "score (debug)"),
+                    ("", "\n"),
+                    ("", str(cmd.score)),
+                    ("", "\n"),
+                ]
             )
         cast(FormattedTextControl, self.content).text = FormattedText(ans)
 
@@ -193,6 +209,7 @@ kb = KeyBindings()
 
 
 @kb.add("c-c")
+@kb.add("escape")
 def exit_(event: KeyPressEvent) -> None:
     """
     Pressing Ctrl-Q will exit the user interface.
@@ -313,6 +330,7 @@ class YCApplication(Application[None]):
                 [(yc.theme.highlight_color, yc.theme.searchbox.prompt)]
             ),
         )
+        self.debug_mode = "--debug" in sys.argv
         self.listdata = ListBoxData()
         root_container = self._init_ui(width, height)
         super().__init__(
@@ -345,6 +363,7 @@ class YCApplication(Application[None]):
             width=width,
             height=yc.theme.preview.narrow_height,
             style=f"bg:{yc.theme.preview.bg_color}",
+            debug_mode=self.debug_mode,
         )
         self.listbox = ListBox(
             width=width,
@@ -365,6 +384,7 @@ class YCApplication(Application[None]):
             width=int(0.6 * width),
             height=yc.theme.wide_height,
             style=f"bg:{yc.theme.preview.bg_color}",
+            debug_mode=self.debug_mode,
         )
         self.listbox = ListBox(
             width=width - cast(int, self.preview.width),
@@ -445,6 +465,9 @@ def main() -> None:
         terminal_size.lines,
         color_depth=_color_depth[yc.theme.color_depth],
     )
+    app.ttimeoutlen = 0.01
+    app.timeoutlen = 0.01
+
     debug_cmd = DebugSoldier()
     yc_rc.chief_commander.recruit(debug_cmd)
     debug_cmd.info.update(
