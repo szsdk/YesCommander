@@ -15,7 +15,6 @@ from .theme import Theme, theme
 __all__ = [
     "Soldier",
     "FileSoldier",
-    "DebugSoldier",
     "RunSoldier",
     "Commander",
     "LazyCommander",
@@ -98,29 +97,12 @@ class Soldier(BaseCommand, BaseCommander):
         return cls(kws, cmd, des)
 
 
-class DebugSoldier(BaseCommand, BaseCommander):
-    def __init__(self) -> None:
-        self.info: Dict[str, Any] = {"theme": theme}
-        self.score = -1000
-
-    def order(self, keywords: List[str]) -> Iterable[DebugSoldier]:
-        if len(keywords) == 1 and keywords[0] == "debug":
-            yield self
-
-    def __str__(self) -> str:
-        return "Debug"
-
-    def preview(self) -> Dict[str, str]:
-        return {"print debug infomation": ""}
-
-    def result(self) -> None:
-        ans = {}
-        for k, v in self.info.items():
-            ans[k] = v.to_dict() if isinstance(v, Theme) else v
-        pprint(ans)
-
-
 class FileSoldier(BaseCommand, BaseCommander):
+    """
+    `FileSoldier` would give an order to open a file with its corresponding viewer defined in `file_viewer`
+    if given keywords are matched with default keywords or the name of the file.
+    """
+
     def __init__(
         self,
         keywords: List[str],
@@ -170,6 +152,11 @@ class FileSoldier(BaseCommand, BaseCommander):
 
 
 class RunSoldier(Soldier):
+    """
+    `RunSoldier` inherits from the `Soldier`. But instead of injecting command to termianl,
+    `RunSoldier` will direct run the given command.
+    """
+
     def result(self) -> None:
         if isinstance(self.command, str):
             os.system(self.command)
@@ -201,16 +188,19 @@ class Commander(BaseCommander):
 
 
 class LazyCommander(BaseLazyCommander):
-    def __init__(self, commands: Iterable[BaseAsyncCommander]) -> None:
+    def __init__(self, commands: List[BaseLazyCommander]) -> None:
         self._commands = commands
 
     def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         for c in self._commands:
             c.order(keywords, queue=queue)
 
+    def append(self, cmd: BaseLazyCommander) -> None:
+        self._commands.append(cmd)
+
 
 class RunAsyncCommander(BaseLazyCommander):
-    def __init__(self, commands: Iterable[BaseAsyncCommander]) -> None:
+    def __init__(self, commands: List[BaseAsyncCommander]) -> None:
         self._commands = commands
 
     async def _order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
@@ -221,3 +211,6 @@ class RunAsyncCommander(BaseLazyCommander):
 
     def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
         asyncio.run(self._order(keywords, queue))
+
+    def append(self, cmd: BaseAsyncCommander) -> None:
+        self._commands.append(cmd)

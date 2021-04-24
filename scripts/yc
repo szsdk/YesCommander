@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import annotations
+
 import time
 
 _STARTUP_t0 = time.time()
@@ -29,7 +31,18 @@ import shutil
 import sys
 import threading
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast, no_type_check
+from pprint import pprint
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    cast,
+    no_type_check,
+)
 
 import yescommander as yc
 
@@ -397,6 +410,28 @@ _color_depth = {
 }
 
 
+class DebugSoldier(yc.BaseCommand, yc.BaseCommander):
+    def __init__(self) -> None:
+        self.info: Dict[str, Any] = {"theme": yc.theme}
+        self.score = -1000
+
+    def order(self, keywords: List[str]) -> Iterable[DebugSoldier]:
+        if len(keywords) == 1 and keywords[0] == "debug":
+            yield self
+
+    def __str__(self) -> str:
+        return "Debug"
+
+    def preview(self) -> Dict[str, str]:
+        return {"print debug infomation": ""}
+
+    def result(self) -> None:
+        ans = {}
+        for k, v in self.info.items():
+            ans[k] = v.to_dict() if isinstance(v, yc.Theme) else v
+        pprint(ans)
+
+
 def main() -> None:
     terminal_size = shutil.get_terminal_size((80, 20))
     app = YCApplication(
@@ -404,7 +439,7 @@ def main() -> None:
         terminal_size.lines,
         color_depth=_color_depth[yc.theme.color_depth],
     )
-    debug_cmd = yc.DebugSoldier()
+    debug_cmd = DebugSoldier()
     yc_rc.chief_commander.append(debug_cmd)
     debug_cmd.info.update(
         {

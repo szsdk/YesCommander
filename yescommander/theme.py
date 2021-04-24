@@ -1,6 +1,6 @@
 from typing import Any, Dict, Iterable, List, Type, TypeVar, Union, cast, no_type_check
 
-__all__ = ["theme"]
+__all__ = ["Theme", "theme"]
 
 
 class Theme:
