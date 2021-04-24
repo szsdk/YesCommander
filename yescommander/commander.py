@@ -6,25 +6,23 @@ from pprint import pformat, pprint
 from queue import Queue
 from typing import Any, Dict, Iterable, List, Type, TypeVar, Union, cast, no_type_check
 
-from .core import (
-    BaseAsyncCommander,
-    BaseCommand,
-    BaseCommander,
-    BaseLazyCommander,
-    file_viewer,
-    inject_command,
-)
+from .core import BaseAsyncCommander, BaseCommand, BaseCommander, BaseLazyCommander
 from .theme import Theme, theme
 
 __all__ = [
     "Soldier",
-    "RunSoldier",
     "FileSoldier",
+    "DebugSoldier",
+    "RunSoldier",
     "Commander",
     "LazyCommander",
     "RunAsyncCommander",
-    "DebugSoldier",
+    "inject_command",
+    "file_viewer",
 ]
+
+
+file_viewer = {"default": "vim %s"}
 
 
 def find_kws_cmd(input_words: List[str], keywords: List[str], command: str) -> bool:
@@ -39,10 +37,27 @@ def find_kws_cmd(input_words: List[str], keywords: List[str], command: str) -> b
     return True
 
 
+def inject_command(cmd: str) -> None:
+    """
+    Inject `cmd` to command line.
+    """
+    import fcntl
+    import sys
+    import termios
+
+    for c in cmd:
+        fcntl.ioctl(sys.stdin, termios.TIOCSTI, c.encode())
+
+
 T = TypeVar("T", bound="Soldier")
 
 
 class Soldier(BaseCommand, BaseCommander):
+    """
+    `Soldier` class is the simplest `Commander` which inherit from both `BaseCommand` and `BaseCommander`.
+    In its `match` function, it yields itself.
+    """
+
     def __init__(
         self, keywords: List[str], command: str, description: str, score: int = 50
     ) -> None:
