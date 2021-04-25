@@ -126,9 +126,6 @@ class FileSoldier(BaseCommand, BaseCommander):
     def _open(self) -> str:
         if self.filetype in file_viewer:
             return file_viewer[self.filetype]
-        print(
-            f"Warning: cannot find viewer for filetype: {self.filetype}, opening with `{file_viewer['default']}`"
-        )
         return file_viewer["default"]
 
     def __str__(self) -> str:
@@ -138,6 +135,7 @@ class FileSoldier(BaseCommand, BaseCommander):
         ans = {
             "file": self.filename,
             "file type": self.filetype,
+            "open with": self._open(),
         }
         if self.description != "":
             ans["description"] = self.description

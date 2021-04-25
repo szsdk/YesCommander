@@ -126,11 +126,11 @@ class ListBoxData:
             return False
         return self._selected == i
 
-    def selectNext(self) -> None:
-        self._selected = (self._selected + 1) % len(self)
+    def selectNext(self, num=1) -> None:
+        self._selected = (self._selected + num) % len(self)
 
-    def selectPrevious(self) -> None:
-        self._selected = (self._selected - 1) % len(self)
+    def selectPrevious(self, num=1) -> None:
+        self._selected = (self._selected - num) % len(self)
 
     def getSelected(self) -> int:
         self._selected = min(self._selected, len(self.commands) - 1)
@@ -242,6 +242,22 @@ def select_next_(event: KeyPressEvent) -> None:
     app.invalidate()
 
 
+@kb.add("c-d")
+def select_next_page(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
+    app.listdata.selectNext(app.listbox.height)
+    app.update()
+    app.invalidate()
+
+
+@kb.add("c-u")
+def select_previous_page(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
+    app.listdata.selectPrevious(app.listbox.height)
+    app.update()
+    app.invalidate()
+
+
 exit_cmd: Callable[[], None] = lambda: None
 
 
@@ -256,7 +272,7 @@ def execute(event: KeyPressEvent) -> None:
         exit_cmd = selection.result
 
 
-@kb.add("c-d")
+@kb.add("c-y")
 def copy(event: KeyPressEvent) -> None:
     app = cast(YCApplication, event.app)
     app.stop_draw()
@@ -326,9 +342,7 @@ class YCApplication(Application[None]):
         self.textbox = Window(
             content=BufferControl(buffer=self.textbox_buffer),
             height=1,
-            get_line_prefix=lambda line_num, wrap_count: FormattedText(
-                [(yc.theme.highlight_color, yc.theme.searchbox.prompt)]
-            ),
+            get_line_prefix=self.get_line_prefix,
         )
         self.debug_mode = "--debug" in sys.argv
         self.listdata = ListBoxData()
@@ -342,6 +356,17 @@ class YCApplication(Application[None]):
         )
 
         self._draw_thread = StoppableThread(self)
+
+    def get_line_prefix(self, line_num, wrap_count):
+        idx = self.listdata.getSelected() + 1
+        return FormattedText(
+            [
+                (
+                    yc.theme.highlight_color,
+                    f"{idx}/{len(self.listdata)} {yc.theme.searchbox.prompt}",
+                )
+            ]
+        )
 
     def _init_show_preview(self) -> AnyContainer:
         if not yc.theme.preview.frame:

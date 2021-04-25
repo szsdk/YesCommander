@@ -19,5 +19,7 @@ yc
 - `enter`: execute a command
 - `ctrl-n`/`down`/`tab`: select the next command
 - `ctrl-p`/`up`/`shift-tab`: select the previous command
-- `ctrl-d`: copy the command
+- `ctrl-d`: view the next page
+- `ctrl-u`: view the previous page
+- `ctrl-y`: copy the command
 - `escape`/`ctrl-c`: exit
