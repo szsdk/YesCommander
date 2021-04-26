@@ -7,4 +7,6 @@ setup(
     packages=["yescommander"],
     scripts=["scripts/yc"],
     install_requires=["prompt_toolkit", "pyperclip"],
+    data_files=[("example", ["yescommander/example/yc_rc.py"])],
+    include_package_data=True,
 )

@@ -39,4 +39,3 @@ theme.wide_height = 20
 theme.narrow_height = 20
 theme.highlight_color = "grey"
 theme.color_depth = 24
-# TODO: Add more ui size control parameters

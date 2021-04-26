@@ -57,7 +57,6 @@ sys.path.insert(0, str(_CONFIG_PATH))
 
 
 def init_config_folder() -> None:
-
     if not _CONFIG_PATH.exists():
         _CONFIG_PATH.mkdir(parents=True, exist_ok=True)
     config_file = _CONFIG_PATH / "yc_rc.py"
@@ -65,7 +64,9 @@ def init_config_folder() -> None:
     if not config_file.exists():
         import pkg_resources
 
-        init_cfg_path = pkg_resources.resource_filename("yescommander", "example/rc.py")
+        init_cfg_path = pkg_resources.resource_filename(
+            "yescommander", "example/yc_rc.py"
+        )
         print(f"==== initalize {str(config_file)} ====")
         with open(init_cfg_path, "r") as fp:
             print(fp.read())
