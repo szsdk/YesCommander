@@ -318,7 +318,7 @@ class StoppableThread(threading.Thread):
 
         self._app.update(commands)
 
-        queue: multiprocessing.Queue[yc.BaseCommand] = multiprocessing.Queue()
+        queue: "multiprocessing.Queue[yc.BaseCommand]" = multiprocessing.Queue()
         proc = multiprocessing.Process(
             target=yc_rc.lazy_commander.order, args=(keywords, queue)
         )

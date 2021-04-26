@@ -194,7 +194,7 @@ class LazyCommander(BaseLazyCommander):
     def __init__(self, commands: List[BaseLazyCommander]) -> None:
         self._commands = commands
 
-    def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         for c in self._commands:
             c.order(keywords, queue=queue)
 
@@ -206,13 +206,13 @@ class RunAsyncCommander(BaseLazyCommander):
     def __init__(self, commands: List[BaseAsyncCommander]) -> None:
         self._commands = commands
 
-    async def _order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    async def _order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         for c in asyncio.as_completed(
             [cmd.order(keywords, queue=queue) for cmd in self._commands]
         ):
             await c
 
-    def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         asyncio.run(self._order(keywords, queue))
 
     def recruit(self, cmd: BaseAsyncCommander) -> None:

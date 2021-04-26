@@ -59,7 +59,7 @@ class BaseLazyCommander:
     queue.
     """
 
-    def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         raise NotImplementedError()
 
 
@@ -69,5 +69,5 @@ class BaseAsyncCommander:
     which has the same interface as `BaseLazyCommander`'s.
     """
 
-    async def order(self, keywords: List[str], queue: Queue[BaseCommand]) -> None:
+    async def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         raise NotImplementedError()
