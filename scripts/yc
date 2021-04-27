@@ -34,6 +34,7 @@ import os
 import shutil
 import sys
 import threading
+from functools import partial
 from pathlib import Path
 from pprint import pprint
 from typing import (
@@ -131,7 +132,7 @@ class ListBoxData:
         self._selected = (self._selected + num) % len(self)
 
     def selectPrevious(self, num=1) -> None:
-        self._selected = (self._selected - num) % len(self)
+        self.selectNext(-num)
 
     def getSelected(self) -> int:
         self._selected = min(self._selected, len(self.commands) - 1)
@@ -206,89 +207,7 @@ class ListBox(Window):
         self.content.text = FormattedText(t)  # type: ignore
 
 
-kb = KeyBindings()
-
-
-@kb.add("c-c")
-@kb.add("escape")
-def exit_(event: KeyPressEvent) -> None:
-    """
-    Pressing Ctrl-Q will exit the user interface.
-
-    Setting a return value means: quit the event loop that drives the user
-    interface and return this value from the `Application.run()` call.
-    """
-    app = cast(YCApplication, event.app)
-    app.stop_draw()
-    app.exit()
-
-
-@kb.add("c-p")
-@kb.add("up")
-@kb.add("s-tab")
-def select_previous_(event: KeyPressEvent) -> None:
-    app = cast(YCApplication, event.app)
-    app.listdata.selectPrevious()
-    app.update()
-    app.invalidate()
-
-
-@kb.add("c-n")
-@kb.add("down")
-@kb.add("tab")
-def select_next_(event: KeyPressEvent) -> None:
-    app = cast(YCApplication, event.app)
-    app.listdata.selectNext()
-    app.update()
-    app.invalidate()
-
-
-@kb.add("c-d")
-def select_next_page(event: KeyPressEvent) -> None:
-    app = cast(YCApplication, event.app)
-    app.listdata.selectNext(app.listbox.height)
-    app.update()
-    app.invalidate()
-
-
-@kb.add("c-u")
-def select_previous_page(event: KeyPressEvent) -> None:
-    app = cast(YCApplication, event.app)
-    app.listdata.selectPrevious(app.listbox.height)
-    app.update()
-    app.invalidate()
-
-
 exit_cmd: Callable[[], None] = lambda: None
-
-
-@kb.add("enter")
-def execute(event: KeyPressEvent) -> None:
-    app = cast(YCApplication, event.app)
-    app.stop_draw()
-    app.exit()
-    global exit_cmd
-    selection = app.listbox.data.getSelection()
-    if selection is not None:
-        exit_cmd = selection.result
-
-
-@kb.add("c-y")
-def copy(event: KeyPressEvent) -> None:
-    app = cast(YCApplication, event.app)
-    app.stop_draw()
-    app.exit()
-
-    def copy_cmd() -> None:
-        import pyperclip  # type: ignore
-
-        selection = app.listbox.data.getSelection()
-        if selection is not None:
-            pyperclip.copy(selection.copy_clipboard())
-            print("Copied")
-
-    global exit_cmd
-    exit_cmd = copy_cmd
 
 
 class StoppableThread(threading.Thread):
@@ -484,6 +403,74 @@ class DebugSoldier(yc.BaseCommand, yc.BaseCommander):
         pprint(ans)
 
 
+kb = KeyBindings()
+
+
+def select_next_kernel(event: KeyPressEvent, n=1) -> None:
+    app = cast(YCApplication, event.app)
+    app.listdata.selectNext(n)
+    app.update()
+    app.invalidate()
+
+
+@kb.add("enter")
+def execute(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
+    app.stop_draw()
+    app.exit()
+    global exit_cmd
+    selection = app.listbox.data.getSelection()
+    if selection is not None:
+        exit_cmd = selection.result
+
+
+@kb.add("c-y")
+def copy(event: KeyPressEvent) -> None:
+    app = cast(YCApplication, event.app)
+    app.stop_draw()
+    app.exit()
+
+    def copy_cmd() -> None:
+        import pyperclip  # type: ignore
+
+        selection = app.listbox.data.getSelection()
+        if selection is not None:
+            pyperclip.copy(selection.copy_clipboard())
+            print("Copied")
+
+    global exit_cmd
+    exit_cmd = copy_cmd
+
+
+@kb.add("c-c")
+@kb.add("escape")
+def exit_(event: KeyPressEvent) -> None:
+    """
+    Pressing Ctrl-Q will exit the user interface.
+
+    Setting a return value means: quit the event loop that drives the user
+    interface and return this value from the `Application.run()` call.
+    """
+    app = cast(YCApplication, event.app)
+    app.stop_draw()
+    app.exit()
+
+
+def bind_keys(app):
+    kb.add("c-d")(partial(select_next_kernel, n=app.listbox.height))
+    kb.add("c-u")(partial(select_next_kernel, n=-app.listbox.height))
+    kb.add("c-n")(partial(select_next_kernel, n=4))
+    kb.add("c-p")(partial(select_next_kernel, n=-4))
+
+    next_1 = partial(select_next_kernel, n=1)
+    for keys in ["c-j", "down", "tab"]:
+        kb.add(keys)(next_1)
+
+    previous_1 = partial(select_next_kernel, n=-1)
+    for keys in ["c-k", "up", "s-tab"]:
+        kb.add(keys)(previous_1)
+
+
 def main() -> None:
     terminal_size = shutil.get_terminal_size((80, 20))
     app = YCApplication(
@@ -493,6 +480,7 @@ def main() -> None:
     )
     app.ttimeoutlen = 0.01
     app.timeoutlen = 0.01
+    bind_keys(app)
 
     debug_cmd = DebugSoldier()
     yc_rc.chief_commander.recruit(debug_cmd)
