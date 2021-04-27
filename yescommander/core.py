@@ -13,7 +13,12 @@ __all__ = [
 
 
 class BaseCommand:
-    score: int
+    """
+    The is the base class for commands which could be displayed (`__str__`),
+    executed (`__run__`) or copied (`copy_clipboard`) by `yc`.
+    """
+
+    score: int  # Used for sorting. Higher score means higher preference.
 
     def copy_clipboard(self) -> str:
         """
