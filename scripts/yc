@@ -241,14 +241,18 @@ class StoppableThread(threading.Thread):
         proc.start()
         cmds = []
         while not self.stopped():
+            updated = False
             try:
-                cmds.append(queue.get(False))
-                self._app.update(cmds)
+                for i in range(30):
+                    cmds.append(queue.get(False))
+                    updated = True
             except Empty:
                 if not proc.is_alive():
                     time.sleep(0.1)
                 pass
-        # proc.terminate()
+            if updated:
+                self._app.update(cmds)
+        proc.terminate()
 
 
 class YCApplication(Application[None]):
@@ -263,6 +267,7 @@ class YCApplication(Application[None]):
         )
         self.debug_mode = "--debug" in sys.argv
         self.listdata = ListBoxData()
+        self._max_num = 2
         root_container = self._init_ui(width, height)
         super().__init__(
             layout=Layout(root_container),
@@ -275,17 +280,11 @@ class YCApplication(Application[None]):
         self._draw_thread = StoppableThread(self)
 
     def get_line_prefix(self, line_num, wrap_count):
-        idx = self.listdata.getSelected() + 1
-        num_cmds = len(self.listdata)
-        return FormattedText(
-            [
-                (
-                    yc.theme.highlight_color,
-                    " " * (len(str(num_cmds)) - len(str(idx)))
-                    + f"{idx}/{num_cmds} {yc.theme.searchbox.prompt}",
-                )
-            ]
-        )
+        idx = str(self.listdata.getSelected() + 1)
+        num_cmds = str(len(self.listdata))
+        self._max_num = max(self._max_num, len(idx), len(num_cmds))
+        prompt = f"{idx.rjust(self._max_num)}/{num_cmds.ljust(self._max_num)} {yc.theme.searchbox.prompt}"
+        return FormattedText([(yc.theme.highlight_color, prompt)])
 
     def _init_show_preview(self) -> AnyContainer:
         if not yc.theme.preview.frame:
