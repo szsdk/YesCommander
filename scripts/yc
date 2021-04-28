@@ -192,7 +192,11 @@ class ListBox(Window):
                     cmd.marker if hasattr(cmd, "marker") else yc.theme.default_marker,  # type: ignore
                 )
             )
-            s = str(cmd)
+            try:
+                s = str(cmd)
+            except NotImplementedError:
+                s = cmd.formatted_str()  # type: ignore
+                # This is an undocumented method.
             if isinstance(s, FormattedText):
                 t.extend(s)
             else:

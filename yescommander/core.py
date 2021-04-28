@@ -41,7 +41,7 @@ class BaseCommand:
         """
         Return the string for listing.
         """
-        return ""
+        raise NotImplementedError()
 
 
 class BaseCommander:
