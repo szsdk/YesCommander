@@ -8,7 +8,8 @@ import os
 from queue import Queue
 from typing import Any, Dict, Iterable, List, Type, TypeVar, Union, cast, no_type_check
 
-from .core import BaseAsyncCommander, BaseCommand, BaseCommander, BaseLazyCommander
+from . import logger
+from .core import BaseAsyncCommander, BaseCommand, BaseCommander
 from .theme import Theme, theme
 
 __all__ = [
@@ -16,7 +17,6 @@ __all__ = [
     "FileSoldier",
     "RunSoldier",
     "Commander",
-    "LazyCommander",
     "RunAsyncCommander",
     "inject_command",
     "file_viewer",
@@ -67,9 +67,9 @@ class Soldier(BaseCommand, BaseCommander):
         self.description = description
         self.score = score
 
-    def order(self, keywords: List[str]) -> Iterable[Soldier]:
+    def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         if find_kws_cmd(keywords, self.keywords, self.command):
-            yield self
+            queue.put(self)
 
     def __str__(self) -> str:
         return self.command
@@ -119,9 +119,9 @@ class FileSoldier(BaseCommand, BaseCommander):
         self.filetype = str(filetype)
         self.score = score
 
-    def order(self, keywords: List[str]) -> Iterable[FileSoldier]:
+    def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         if find_kws_cmd(keywords, self.keywords, self.filename):
-            yield self
+            queue.put(self)
 
     def _open(self) -> str:
         if self.filetype in file_viewer:
@@ -178,31 +178,18 @@ class Commander(BaseCommander):
     `Commander` object is in charge of a list of other `BaseCommander` objects.
     """
 
-    def __init__(self, commands: List[BaseCommander]) -> None:
-        self._commands = commands
-
-    def order(self, keywords: List[str]) -> Iterable[BaseCommand]:
-        for cmdr in self._commands:
-            for cmd in cmdr.order(keywords):
-                yield cmd
-
-    def recruit(self, cmd: BaseCommander) -> None:
-        self._commands.append(cmd)
-
-
-class LazyCommander(BaseLazyCommander):
-    def __init__(self, commands: List[BaseLazyCommander]) -> None:
-        self._commands = commands
+    def __init__(self, commanders: List[BaseCommander]) -> None:
+        self._commanders = commanders
 
     def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
-        for c in self._commands:
-            c.order(keywords, queue=queue)
+        for cmdr in self._commanders:
+            cmdr.order(keywords, queue)
 
-    def recruit(self, cmd: BaseLazyCommander) -> None:
-        self._commands.append(cmd)
+    def recruit(self, cmd: BaseCommander) -> None:
+        self._commanders.append(cmd)
 
 
-class RunAsyncCommander(BaseLazyCommander):
+class RunAsyncCommander(BaseCommander):
     def __init__(self, commands: List[BaseAsyncCommander]) -> None:
         self._commands = commands
 

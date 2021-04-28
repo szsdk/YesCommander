@@ -13,6 +13,3 @@ commanders: List[yc.BaseCommander] = [
     ),
 ]
 chief_commander = yc.Commander(commanders)
-
-# Commanders are charged by `lazy_commander` would be run in a different process.
-lazy_commander = yc.LazyCommander([])

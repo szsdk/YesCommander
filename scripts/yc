@@ -37,6 +37,7 @@ import threading
 from functools import partial
 from pathlib import Path
 from pprint import pprint
+from queue import Empty, Queue
 from typing import (
     Any,
     Callable,
@@ -226,32 +227,28 @@ class StoppableThread(threading.Thread):
         return self._stop_event.is_set()
 
     def run(self) -> None:
-        from queue import Empty
 
         searching_text = self._app.textbox_buffer.text
         keywords = searching_text.split(" ")
-        if len(keywords) == 0:
-            commands = []
-        else:
-            commands = list(yc_rc.chief_commander.order(keywords))
-
-        self._app.update(commands)
+        if len(searching_text.strip()) == 0:
+            self._app.update([])
+            return
 
         queue: "multiprocessing.Queue[yc.BaseCommand]" = multiprocessing.Queue()
         proc = multiprocessing.Process(
-            target=yc_rc.lazy_commander.order, args=(keywords, queue)
+            target=yc_rc.chief_commander.order, args=(keywords, queue)
         )
         proc.start()
+        cmds = []
         while not self.stopped():
             try:
-                n = queue.get(False)
-                commands.append(n)
-                self._app.update(commands)
+                cmds.append(queue.get(False))
+                self._app.update(cmds)
             except Empty:
                 if not proc.is_alive():
-                    time.sleep(0.01)
+                    time.sleep(0.1)
                 pass
-        proc.terminate()
+        # proc.terminate()
 
 
 class YCApplication(Application[None]):
@@ -279,11 +276,13 @@ class YCApplication(Application[None]):
 
     def get_line_prefix(self, line_num, wrap_count):
         idx = self.listdata.getSelected() + 1
+        num_cmds = len(self.listdata)
         return FormattedText(
             [
                 (
                     yc.theme.highlight_color,
-                    f"{idx}/{len(self.listdata)} {yc.theme.searchbox.prompt}",
+                    " " * (len(str(num_cmds)) - len(str(idx)))
+                    + f"{idx}/{num_cmds} {yc.theme.searchbox.prompt}",
                 )
             ]
         )
@@ -383,12 +382,12 @@ _color_depth = {
 
 class DebugSoldier(yc.BaseCommand, yc.BaseCommander):
     def __init__(self) -> None:
-        self.info: Dict[str, Any] = {"theme": yc.theme}
+        self.info: Dict[str, Any] = {"theme": yc.theme.to_dict()}
         self.score = -1000
 
-    def order(self, keywords: List[str]) -> Iterable[DebugSoldier]:
+    def order(self, keywords: List[str], queue) -> None:
         if len(keywords) == 1 and keywords[0] == "debug":
-            yield self
+            queue.put(self)
 
     def __str__(self) -> str:
         return "Debug"
@@ -397,10 +396,7 @@ class DebugSoldier(yc.BaseCommand, yc.BaseCommander):
         return {"print debug infomation": ""}
 
     def result(self) -> None:
-        ans = {}
-        for k, v in self.info.items():
-            ans[k] = v.to_dict() if isinstance(v, yc.Theme) else v
-        pprint(ans)
+        pprint(self.info)
 
 
 kb = KeyBindings()
@@ -473,6 +469,7 @@ def bind_keys(app):
 
 def main() -> None:
     terminal_size = shutil.get_terminal_size((80, 20))
+
     app = YCApplication(
         terminal_size.columns,
         terminal_size.lines,
@@ -502,4 +499,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+
     main()

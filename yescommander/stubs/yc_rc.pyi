@@ -1,4 +1,3 @@
 import yescommander as yc
 
-chief_commander: yc.Commander
-lazy_commander: yc.BaseLazyCommander
+chief_commander: yc.BaseCommander

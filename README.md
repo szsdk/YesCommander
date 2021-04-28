@@ -15,11 +15,9 @@ pip install .
 ```
 yc
 ```
-In the first time run this command, this command will write an example
-configure file, `yc_rc.py` to `YesCommander`'s configure directory,
-`~/.config/yescommander`. The goal of this `yc_rc.py` is to generate two
-variables: the `chief_commander` (a `yc.Commander` object) and the
-`lazy_commander` (a `yc.LazyCommander` object).
+In the first time run this command, this command will write an example configure file, `yc_rc.py`
+to `YesCommander`'s configure directory, `~/.config/yescommander`. The goal of this `yc_rc.py` is
+to generate a `chief_commander` object.
 
 Check the example `yc_rc.py` with
 ```
@@ -42,9 +40,6 @@ commanders: List[yc.BaseCommander] = [
     ),
 ]
 chief_commander = yc.Commander(commanders)
-
-# Commanders are charged by `lazy_commander` would be run in a different process.
-lazy_commander = yc.LazyCommander([])
 ```
 Then run `yc` in command line again, you will get two command candidates to be
 selected which are defined in `yc_rc.py`.
@@ -86,14 +81,13 @@ This package consists of two parts: a python library `yescommander` and a termin
 inference (TUI) application, `yc`. Its main idea could be summaried in one sentence:
 > a commander gives commands.
 
-The `yc` is just a interface for viewing and executing these commands given by `chief_commander` or
-`lazy_commander` defined by users in their `yc_rc.py` file.
+The `yc` is just a interface for viewing and executing these commands given by `chief_commander`
+defined by users in their `yc_rc.py` file.
 
 The library mainly defines four protocol classes:
 1. `BaseCommand`
 2. `BaseCommander`
-3. `BaseLazyCommander`
-4. `BaseAsyncCommander`
+3. `BaseAsyncCommander`
 
 ### `BaseCommand`
 Commands are objects which could be displayed (`__str__`), executed (`__run__`) or copied

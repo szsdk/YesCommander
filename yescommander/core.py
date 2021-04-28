@@ -7,7 +7,6 @@ from typing import Dict, Iterable, List
 __all__ = [
     "BaseCommand",
     "BaseCommander",
-    "BaseLazyCommander",
     "BaseAsyncCommander",
 ]
 
@@ -49,29 +48,17 @@ class BaseCommander:
     """
     `BaseCommander` is a class which implements a `order` method. The `order`
     method takes a list of keywords as input, then return an iterable object
-    which generates a set of `BaseCommand` object.
+    which puts a set of `BaseCommand` objects into a command queue.
     """
 
-    def order(self, keywords: List[str]) -> Iterable[BaseCommand]:
-        raise NotImplementedError()
-
-
-class BaseLazyCommander:
-    """
-    `BaseLazyCommander` is a class which implements a `order` method. The
-    `order` method takes a list of keywords and a `Queue` object as input.
-    Instead of returning commands, generated commands should be put into the
-    queue.
-    """
-
-    def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
+    def order(self, keywords: List[str], queue: Queue) -> None:
         raise NotImplementedError()
 
 
 class BaseAsyncCommander:
     """
     `BaseAsyncCommander` is a class which implements a **async** `order` method
-    which has the same interface as `BaseLazyCommander`'s.
+    which has the same interface as `BaseCommander`'s.
     """
 
     async def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
