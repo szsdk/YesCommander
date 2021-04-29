@@ -122,7 +122,7 @@ class Preview(Window):
 class ListBoxData:
     def __init__(self) -> None:
         self.commands: List[yc.BaseCommand] = []
-        self._selected = 0
+        self._selected: int = 0
 
     def isSelected(self, i: int) -> bool:
         if self._selected is None:
@@ -136,7 +136,10 @@ class ListBoxData:
         self.selectNext(-num)
 
     def getSelected(self) -> int:
-        self._selected = min(self._selected, len(self.commands) - 1)
+        if self._selected == -1 and len(self.commands) > 0:
+            self._selected = 0
+        else:
+            self._selected = min(self._selected, len(self.commands) - 1)
         return self._selected
 
     def __len__(self) -> int:
@@ -193,7 +196,7 @@ class ListBox(Window):
                 )
             )
             try:
-                s = str(cmd)
+                s = str(cmd).splitlines()[0]
             except NotImplementedError:
                 s = cmd.formatted_str()  # type: ignore
                 # This is an undocumented method.
@@ -233,7 +236,7 @@ class StoppableThread(threading.Thread):
     def run(self) -> None:
 
         searching_text = self._app.textbox_buffer.text
-        keywords = searching_text.split(" ")
+        keywords = searching_text.strip().split(" ")
         if len(searching_text.strip()) == 0:
             self._app.update([])
             return
