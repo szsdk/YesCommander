@@ -56,9 +56,30 @@ chief_commander = yc.Commander(commanders)
 ```
 
 **Trick:** since `yc_rc.py` is totally executable, a quick way to check the correctness of
-`yc_rc.py` is just running it.
+`yc_rc.py` is directly running it.
 
-### Shortcut
+### Layout and Shortcut
+
+The layout of the `yc` consists of three parts:
+1. searching textbox
+2. command listbox
+3. preview
+
+There is a global variable `theme` in the `yescommander` library. You could try to put the
+following code into your `yc_rc.py` to prettify your `yc` program.
+```python
+yc.theme.highlight_color = "#c84646"
+yc.theme.marker_color = "#e18d01"
+yc.RunSoldier.marker = " "
+yc.theme.default_marker = "⚒ "
+yc.theme.searchbox.prompt = "▶ "
+yc.theme.preview.title_color = "#80986e"
+yc.theme.preview.bg_color = "#e3d7b9"
+yc.theme.preview.frame_color = "#838383"
+yc.theme.preview.frame = False
+yc.theme.color_depth = 24
+```
+The full definition of the `theme` variable is in `yescommander/theme.py`.
 
 The shortcuts controlling `yc` are listed as following:
 
@@ -133,5 +154,26 @@ class BaseCommander:
     """
 
     def order(self, keywords: List[str]) -> Iterable[BaseCommand]:
+        raise NotImplementedError()
+```
+
+### Execution mechanism and `BaseAsyncCommander`
+
+A subprocess is forked to call all commanders in the `chief_commander` in order whenever the
+seaching text is changed. There is a thread in the main process listening the `queue` which is
+passed around over all commanders.
+
+A common senario is that some long time IO operations are needed for a commander to generate
+commands. For example, a google searching commander needs fetch information from the internet to
+give commands, which may take few seconds. To cover the delay, the async mechanism of python is
+utilized. The `BaseAsyncCommander` is defined as following
+```python
+class BaseAsyncCommander:
+    """
+    `BaseAsyncCommander` is a class which implements a **async** `order` method
+    which has the same interface as `BaseCommander`'s.
+    """
+
+    async def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         raise NotImplementedError()
 ```
