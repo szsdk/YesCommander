@@ -2,7 +2,7 @@
 This file defines the interfaces of "Command" and three types of "Commanders".
 """
 from queue import Queue
-from typing import Dict, Iterable, List
+from typing import Dict, List
 
 __all__ = [
     "BaseCommand",

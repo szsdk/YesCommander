@@ -6,11 +6,9 @@ from __future__ import annotations
 import asyncio
 import os
 from queue import Queue
-from typing import Any, Dict, Iterable, List, Type, TypeVar, Union, cast, no_type_check
+from typing import Any, Dict, List, Type, TypeVar, Union
 
-from . import logger
 from .core import BaseAsyncCommander, BaseCommand, BaseCommander
-from .theme import Theme, theme
 
 __all__ = [
     "Soldier",

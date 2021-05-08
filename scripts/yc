@@ -130,7 +130,7 @@ class ListBoxData:
         return self._selected == i
 
     def selectNext(self, num=1) -> None:
-        self._selected = (self._selected + num) % len(self)
+        self._selected = 0 if len(self) == 0 else (self._selected + num) % len(self)
 
     def selectPrevious(self, num=1) -> None:
         self.selectNext(-num)
