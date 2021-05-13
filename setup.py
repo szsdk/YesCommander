@@ -6,7 +6,7 @@ setup(
     author="szsdk",
     packages=["yescommander"],
     scripts=["scripts/yc"],
-    install_requires=["prompt_toolkit", "pyperclip"],
+    install_requires=["prompt_toolkit", "pyperclip", "xdg"],
     data_files=[("example", ["yescommander/example/yc_rc.py"])],
     include_package_data=True,
 )

@@ -35,26 +35,24 @@ import shutil
 import sys
 import threading
 from functools import partial
-from pathlib import Path
 from pprint import pprint
-from queue import Empty, Queue
+from queue import Empty
 from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     List,
     Optional,
     Tuple,
     cast,
-    no_type_check,
 )
 
+from xdg import xdg_config_home
 import yescommander as yc
 
 multiprocessing.set_start_method("fork")
 
-_CONFIG_PATH = Path("~/.config/yescommander/").expanduser()
+_CONFIG_PATH = xdg_config_home() / "yescommander"
 sys.path.insert(0, str(_CONFIG_PATH))
 
 
