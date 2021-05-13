@@ -37,29 +37,22 @@ import threading
 from functools import partial
 from pprint import pprint
 from queue import Empty
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    cast,
-)
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
-from xdg import xdg_config_home
+# from xdg import xdg_config_home
 import yescommander as yc
+from yescommander import xdg
 
 multiprocessing.set_start_method("fork")
 
-_CONFIG_PATH = xdg_config_home() / "yescommander"
-sys.path.insert(0, str(_CONFIG_PATH))
+
+sys.path.insert(0, str(xdg.config_path))
 
 
 def init_config_folder() -> None:
-    if not _CONFIG_PATH.exists():
-        _CONFIG_PATH.mkdir(parents=True, exist_ok=True)
-    config_file = _CONFIG_PATH / "yc_rc.py"
+    if not xdg.config_path.exists():
+        xdg.config_path.mkdir(parents=True, exist_ok=True)
+    config_file = xdg.config_path / "yc_rc.py"
 
     if not config_file.exists():
         import pkg_resources
@@ -487,7 +480,7 @@ def main() -> None:
     yc_rc.chief_commander.recruit(debug_cmd)
     debug_cmd.info.update(
         {
-            "config file": str(_CONFIG_PATH / "yc_rc.py"),
+            "config file": str(xdg.config_path / "yc_rc.py"),
             "loading time (s)": {
                 "prompt_toolkit": load_prompt_toolkit_t,
                 "rc": load_rc_t,
