@@ -37,9 +37,8 @@ import threading
 from functools import partial
 from pprint import pprint
 from queue import Empty
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
-# from xdg import xdg_config_home
 import yescommander as yc
 from yescommander import xdg
 
@@ -206,9 +205,6 @@ class ListBox(Window):
         self.content.text = FormattedText(t)  # type: ignore
 
 
-exit_cmd: Callable[[], None] = lambda: None
-
-
 class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
     regularly for the stopped() condition."""
@@ -256,7 +252,8 @@ class StoppableThread(threading.Thread):
 class YCApplication(Application[None]):
     def __init__(self, width: int, height: int, **kargs: Any) -> None:
         self.textbox_buffer = Buffer(
-            on_text_changed=self.searching_text_changed, multiline=False
+            on_text_changed=self.searching_text_changed,
+            multiline=False,
         )  # Editable buffer.
         self.textbox = Window(
             content=BufferControl(buffer=self.textbox_buffer),
@@ -406,47 +403,11 @@ def select_next_kernel(event: KeyPressEvent, n=1) -> None:
     app.invalidate()
 
 
-@kb.add("enter")
-def execute(event: KeyPressEvent) -> None:
+def _exit_cmd(event, action, empty_result=False):
     app = cast(YCApplication, event.app)
     app.stop_draw()
-    app.exit()
-    global exit_cmd
-    selection = app.listbox.data.getSelection()
-    if selection is not None:
-        exit_cmd = selection.result
-
-
-@kb.add("c-y")
-def copy(event: KeyPressEvent) -> None:
-    app = cast(YCApplication, event.app)
-    app.stop_draw()
-    app.exit()
-
-    def copy_cmd() -> None:
-        import pyperclip  # type: ignore
-
-        selection = app.listbox.data.getSelection()
-        if selection is not None:
-            pyperclip.copy(selection.copy_clipboard())
-            print("Copied")
-
-    global exit_cmd
-    exit_cmd = copy_cmd
-
-
-@kb.add("c-c")
-@kb.add("escape")
-def exit_(event: KeyPressEvent) -> None:
-    """
-    Pressing Ctrl-Q will exit the user interface.
-
-    Setting a return value means: quit the event loop that drives the user
-    interface and return this value from the `Application.run()` call.
-    """
-    app = cast(YCApplication, event.app)
-    app.stop_draw()
-    app.exit()
+    result = None if empty_result else app.listbox.data.getSelection()
+    app.exit(result=(result, action))
 
 
 def bind_keys(app):
@@ -454,6 +415,12 @@ def bind_keys(app):
     kb.add("c-u")(partial(select_next_kernel, n=-app.listbox.height))
     kb.add("c-n")(partial(select_next_kernel, n=4))
     kb.add("c-p")(partial(select_next_kernel, n=-4))
+    kb.add("enter")(partial(_exit_cmd, action="run"))
+    kb.add("c-y")(partial(_exit_cmd, action="copy"))
+
+    exit_ = partial(_exit_cmd, action="", empty_result=True)
+    for keys in ["c-c", "escape"]:
+        kb.add(keys)(exit_)
 
     next_1 = partial(select_next_kernel, n=1)
     for keys in ["c-j", "down", "tab"]:
@@ -464,13 +431,15 @@ def bind_keys(app):
         kb.add(keys)(previous_1)
 
 
-def main() -> None:
+def init_app(input=None, output=None):
     terminal_size = shutil.get_terminal_size((80, 20))
 
     app = YCApplication(
         terminal_size.columns,
         terminal_size.lines,
         color_depth=_color_depth[yc.theme.color_depth],
+        input=input,
+        output=output,
     )
     app.ttimeoutlen = 0.01
     app.timeoutlen = 0.01
@@ -491,10 +460,29 @@ def main() -> None:
         }
     )
     debug_cmd.info["loading time (s)"]["total"] = time.time() - _STARTUP_t0
-    app.run()
-    exit_cmd()
+    return app
+
+
+def copy_cmd(command) -> None:
+    import pyperclip  # type: ignore
+
+    content = command.copy_clipboard()
+    if len(content) > 0:
+        pyperclip.copy(content)
+        print("Copied")
+    return content
+
+
+def main(app) -> None:
+    command, action = app.run()
+    if command is None:
+        return
+    if action == "run":
+        return command.result()
+    if action == "copy":
+        return copy_cmd(command)
 
 
 if __name__ == "__main__":
-
-    main()
+    app = init_app()
+    main(app)
