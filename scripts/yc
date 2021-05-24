@@ -484,5 +484,11 @@ def main(app) -> None:
 
 
 if __name__ == "__main__":
-    app = init_app()
-    main(app)
+    if (len(sys.argv) == 1) or ((len(sys.argv) == 2) and (sys.argv[1] == "--debug")):
+        app = init_app()
+        main(app)
+    else:
+        if hasattr(yc_rc, "main"):
+            yc_rc.main()
+        else:
+            print("Cannot find `main` function from you `yc_rc.py`.")
