@@ -28,7 +28,7 @@ file_viewer = {"default": "vim %s"}
 # This `file_viewer` stores commands to open different types of files.
 
 
-def update_file_viewer(mode="cache"):
+def update_file_viewer(mode: str = "cache"):
     def w(func):
         def c():
             viewer_cache = cache_path / "viewer.json"
@@ -125,8 +125,8 @@ class Soldier(BaseCommand, BaseCommander):
 
 class FileSoldier(BaseCommand, BaseCommander):
     """
-    `FileSoldier` would give an order to open a file with its corresponding viewer defined in `file_viewer`
-    if given keywords are matched with default keywords or the name of the file.
+    `FileSoldier` would give an order to open a file with its corresponding viewer defined in
+    `file_viewer` if given keywords are matched with this file's default keywords or its name.
     """
 
     def __init__(
@@ -200,7 +200,7 @@ class RunSoldier(Soldier):
 
 class Commander(BaseCommander):
     """
-    `Commander` object is in charge of a list of other `BaseCommander` objects.
+    `Commander` object is in charge of a list of `BaseCommander` objects.
     """
 
     def __init__(self, commanders: List[BaseCommander]) -> None:

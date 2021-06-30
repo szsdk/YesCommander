@@ -97,15 +97,50 @@ The shortcuts controlling `yc` are listed as following:
 * Exit
     - `escape`/`ctrl-c`: exit
 
+### Two custom commanders
+
+#### Calculator
+
+```python
+class CalculatorSoldier(yc.BaseCommand, yc.BaseCommander):
+    def __init__(self):
+        self.answer = None
+        self._formula = ""
+        self.marker = " "
+        self.score = 100
+
+    def order(self, keywords, queue):
+        formula = "".join(keywords)
+        self._formula = formula
+        try:
+            self.answer = str(eval(formula))
+            queue.put(self)
+        except:  # noqa: E722
+            pass
+
+    def __str__(self):
+        return self._formula + "=" + str(self.answer)
+
+    def copy_clipboard(self):
+        return str(self.answer)
+
+    def preview(self):
+        return {"answer": str(self.answer)}
+
+    def result(self):
+        yc.inject_command(str(self.answer))
+```
+
+
 ## Basic of the package
 This package consists of two parts: a python library `yescommander` and a terminal graphic
 inference (TUI) application, `yc`. Its main idea could be summaried in one sentence:
 > a commander gives commands.
 
-The `yc` is just a interface for viewing and executing these commands given by `chief_commander`
-defined by users in their `yc_rc.py` file.
+The `yc` is just a interface for viewing and executing these commands given by the `chief_commander`
+defined by users in their `yc_rc.py` files.
 
-The library mainly defines four protocol classes:
+The library mainly defines three protocol classes:
 1. `BaseCommand`
 2. `BaseCommander`
 3. `BaseAsyncCommander`
@@ -181,3 +216,4 @@ class BaseAsyncCommander:
 # TODO
 - add examples: calculator, googler
 - add mechanism about main function
+- file_viewer

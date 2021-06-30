@@ -1,5 +1,7 @@
 from pathlib import Path
+from queue import Queue
 
+import yescommander as yc
 from yescommander import xdg
 
 xdg.config_path = Path(__file__).parent / "yc_config"
@@ -16,9 +18,9 @@ def _typing_down(inp, n, end):
     inp.send_text("ls")
     time.sleep(0.2)
     for i in range(n):
-        time.sleep(0.01)
+        time.sleep(0.05)
         inp.send_text("\x0a")
-    time.sleep(0.01)
+    time.sleep(0.05)
     inp.send_text(end)
 
 
@@ -39,3 +41,40 @@ def test_basic(n, end, action, cmd_str):
     assert str(command) == cmd_str
     assert act == action
     inp.close()
+    del t1
+
+
+class CalculatorSoldier(yc.BaseCommand, yc.BaseCommander):
+    def __init__(self):
+        self.answer = None
+        self._formula = ""
+        self.marker = " "
+        self.score = 100
+
+    def order(self, keywords, queue):
+        formula = "".join(keywords)
+        self._formula = formula
+        try:
+            self.answer = str(eval(formula))
+            queue.put(self)
+        except:  # noqa: E722
+            pass
+
+    def __str__(self):
+        return self._formula + "=" + str(self.answer)
+
+    def copy_clipboard(self):
+        return str(self.answer)
+
+    def preview(self):
+        return {"answer": str(self.answer)}
+
+    def result(self):
+        yc.inject_command(str(self.answer))
+
+
+def test_custom_soldier():
+    c = CalculatorSoldier()
+    q = Queue()
+    c.order(["1+" "3"], q)
+    assert c.answer == "4"
