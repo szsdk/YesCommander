@@ -4,11 +4,13 @@ This file includes most basic `Commander` classes.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from queue import Queue
 from typing import Any, Dict, List, Type, TypeVar, Union
 
 from .core import BaseAsyncCommander, BaseCommand, BaseCommander
+from .xdg import cache_path
 
 __all__ = [
     "Soldier",
@@ -18,10 +20,35 @@ __all__ = [
     "RunAsyncCommander",
     "inject_command",
     "file_viewer",
+    "update_file_viewer",
 ]
 
 
 file_viewer = {"default": "vim %s"}
+# This `file_viewer` stores commands to open different types of files.
+
+
+def update_file_viewer(mode="cache"):
+    def w(func):
+        def c():
+            viewer_cache = cache_path / "viewer.json"
+            if mode == "cache":
+                if viewer_cache.exists():
+                    with viewer_cache.open() as fp:
+                        file_viewer.update(json.load(fp))
+                    return
+            elif mode == "ignore":
+                pass
+            else:
+                raise ValueError('mode could only be "cache" or "ignore".')
+            func()
+            viewer_cache.parent.mkdir(parents=True, exist_ok=True)
+            with viewer_cache.open("w") as fp:
+                json.dump(file_viewer, fp)
+
+        return c
+
+    return w
 
 
 def find_kws_cmd(input_words: List[str], keywords: List[str], command: str) -> bool:

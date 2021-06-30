@@ -177,3 +177,7 @@ class BaseAsyncCommander:
     async def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         raise NotImplementedError()
 ```
+
+# TODO
+- add examples: calculator, googler
+- add mechanism about main function
