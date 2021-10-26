@@ -6,8 +6,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from pathlib import Path
 from queue import Queue
-from typing import Any, Dict, List, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
 from .core import BaseAsyncCommander, BaseCommand, BaseCommander
 from .xdg import cache_path
@@ -136,6 +137,7 @@ class FileSoldier(BaseCommand, BaseCommander):
         description: str,
         filetype: str,
         score: int = 50,
+        dir: Optional[Path] = None,
     ):
 
         self.keywords = keywords
@@ -143,6 +145,7 @@ class FileSoldier(BaseCommand, BaseCommander):
         self.description = str(description)
         self.filetype = str(filetype)
         self.score = score
+        self.dir = dir  # Change to this path
 
     def order(self, keywords: List[str], queue: "Queue[BaseCommand]") -> None:
         if find_kws_cmd(keywords, self.keywords, self.filename):
@@ -164,6 +167,8 @@ class FileSoldier(BaseCommand, BaseCommander):
         }
         if self.description != "":
             ans["description"] = self.description
+        if self.dir is not None:
+            ans["dir"] = str(self.dir)
         if len(self.keywords) > 0:
             ans["keywords"] = " ".join(self.keywords)
         return ans
@@ -172,7 +177,11 @@ class FileSoldier(BaseCommand, BaseCommander):
         return self.filename
 
     def result(self) -> None:
+        prev_cwd = Path.cwd()
+        dir = prev_cwd if self.dir is None else self.dir
+        os.chdir(dir)
         os.system(self._open() % self.filename)
+        os.chdir(prev_cwd)
 
 
 class RunSoldier(Soldier):
