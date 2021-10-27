@@ -11,5 +11,5 @@ def _get_path(var, folder) -> Path:
     return Path.home() / folder / "yescommander"
 
 
-config_path = _get_path("XDG_CONFIG_DIRS", ".config")
-cache_path = _get_path("XDG_CACHE_DIRS", ".cache")
+config_path = _get_path("", ".config")
+cache_path = _get_path("", ".cache")

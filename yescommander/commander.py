@@ -42,11 +42,10 @@ def update_file_viewer(mode: str = "cache"):
                 pass
             else:
                 raise ValueError('mode could only be "cache" or "ignore".')
-            func()
+            file_viewer.update(func())
             viewer_cache.parent.mkdir(parents=True, exist_ok=True)
             with viewer_cache.open("w") as fp:
                 json.dump(file_viewer, fp)
-
         return c
 
     return w

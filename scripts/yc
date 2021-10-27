@@ -69,8 +69,11 @@ def init_config_folder() -> None:
 load_rc_t0 = time.time()
 try:
     import yc_rc
-except ModuleNotFoundError:
-    init_config_folder()
+except ModuleNotFoundError as e:
+    if "yc_rc" in str(e):
+        init_config_folder()
+    else:
+        raise e
 load_rc_t = time.time() - load_rc_t0
 
 
@@ -481,7 +484,6 @@ def main(app) -> None:
         return command.result()
     if action == "copy":
         return copy_cmd(command)
-
 
 if __name__ == "__main__":
     if (len(sys.argv) == 1) or ((len(sys.argv) == 2) and (sys.argv[1] == "--debug")):
