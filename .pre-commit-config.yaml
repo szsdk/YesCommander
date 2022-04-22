@@ -7,7 +7,7 @@ repos:
     - id: isort
 
 - repo: https://github.com/ambv/black
-  rev: stable
+  rev: 22.3.0
   hooks:
     - id: black
       pass_filenames: true

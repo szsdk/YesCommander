@@ -274,14 +274,17 @@ class YCApplication(Application[None]):
             erase_when_done=True,
             **kargs,
         )
-
         self._draw_thread = StoppableThread(self)
 
     def get_line_prefix(self, line_num, wrap_count):
-        idx = str(self.listdata.getSelected() + 1)
-        num_cmds = str(len(self.listdata))
-        self._max_num = max(self._max_num, len(idx), len(num_cmds))
-        prompt = f"{idx.rjust(self._max_num)}/{num_cmds.ljust(self._max_num)} {yc.theme.searchbox.prompt}"
+        num_cmds = len(self.listdata)
+        if num_cmds == 0:
+            prompt = yc.theme.searchbox.prompt
+        else:
+            idx = str(self.listdata.getSelected() + 1)
+            num_cmds = str(num_cmds)
+            self._max_num = max(self._max_num, len(idx), len(num_cmds))
+            prompt = f"{idx.rjust(self._max_num)}/{num_cmds.ljust(self._max_num)} {yc.theme.searchbox.prompt}"
         return FormattedText([(yc.theme.highlight_color, prompt)])
 
     def _init_show_preview(self) -> AnyContainer:
@@ -484,6 +487,7 @@ def main(app) -> None:
         return command.result()
     if action == "copy":
         return copy_cmd(command)
+
 
 if __name__ == "__main__":
     if (len(sys.argv) == 1) or ((len(sys.argv) == 2) and (sys.argv[1] == "--debug")):
