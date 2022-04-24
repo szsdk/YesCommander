@@ -9,7 +9,9 @@ from prompt_toolkit.output import DummyOutput
 from yescommander import xdg
 
 xdg.config_path = Path(__file__).parent / "yc_config"
-import yc_app
+import yc_rc
+
+from yescommander.cli import init_app
 
 
 def _typing_down(inp, n, end):
@@ -31,7 +33,7 @@ def _typing_down(inp, n, end):
 )
 def test_basic(n, end, action, cmd_str):
     inp = create_pipe_input()
-    app = yc_app.init_app(input=inp, output=DummyOutput())
+    app = init_app(yc_rc.chief_commander, input=inp, output=DummyOutput())
     t1 = threading.Thread(target=_typing_down, args=(inp, n, end))
     t1.start()
     command, act = app.run()

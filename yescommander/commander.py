@@ -20,6 +20,7 @@ __all__ = [
     "Commander",
     "RunAsyncCommander",
     "inject_command",
+    "copy_command",
     "file_viewer",
     "update_file_viewer",
 ]
@@ -46,6 +47,7 @@ def update_file_viewer(mode: str = "cache"):
             viewer_cache.parent.mkdir(parents=True, exist_ok=True)
             with viewer_cache.open("w") as fp:
                 json.dump(file_viewer, fp)
+
         return c
 
     return w
@@ -73,6 +75,16 @@ def inject_command(cmd: str) -> None:
 
     for c in cmd:
         fcntl.ioctl(sys.stdin, termios.TIOCSTI, c.encode())
+
+
+def copy_command(command) -> None:
+    import pyperclip  # type: ignore
+
+    content = command.copy_clipboard()
+    if len(content) > 0:
+        pyperclip.copy(content)
+        print("Copied")
+    return content
 
 
 T = TypeVar("T", bound="Soldier")

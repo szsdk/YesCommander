@@ -4,11 +4,9 @@ import sys
 import threading
 import time
 from functools import partial
-from pprint import pprint
 from queue import Empty
 from typing import Any, Dict, List, Optional, Tuple, cast
 
-_STARTUP_t0 = time.time()
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.formatted_text import FormattedText
@@ -25,10 +23,7 @@ from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.output import ColorDepth
 from prompt_toolkit.widgets import Frame
 
-load_prompt_toolkit_t = time.time() - _STARTUP_t0
-
-import yescommander as yc
-from yescommander import xdg
+from .. import BaseCommand, theme, xdg
 
 
 class Preview(Window):
@@ -48,16 +43,16 @@ class Preview(Window):
         )
         self.debug_mode = debug_mode
 
-    def update(self, cmd: yc.BaseCommand) -> None:
+    def update(self, cmd: BaseCommand) -> None:
         ans = []
         for k, v in cmd.preview().items():
             ans.extend(
-                [(yc.theme.preview.title_color, k), ("", "\n"), ("", v), ("", "\n")]
+                [(theme.preview.title_color, k), ("", "\n"), ("", v), ("", "\n")]
             )
         if self.debug_mode:
             ans.extend(
                 [
-                    (yc.theme.preview.title_color, "score (debug)"),
+                    (theme.preview.title_color, "score (debug)"),
                     ("", "\n"),
                     ("", str(cmd.score)),
                     ("", "\n"),
@@ -68,7 +63,7 @@ class Preview(Window):
 
 class ListBoxData:
     def __init__(self) -> None:
-        self.commands: List[yc.BaseCommand] = []
+        self.commands: List[BaseCommand] = []
         self._selected: int = 0
 
     def isSelected(self, i: int) -> bool:
@@ -92,10 +87,10 @@ class ListBoxData:
     def __len__(self) -> int:
         return len(self.commands)
 
-    def __getitem__(self, idx: int) -> yc.BaseCommand:
+    def __getitem__(self, idx: int) -> BaseCommand:
         return self.commands[idx]
 
-    def getSelection(self) -> Optional[yc.BaseCommand]:
+    def getSelection(self) -> Optional[BaseCommand]:
         if len(self.commands) == 0:
             return None
         return self.commands[self.getSelected()]
@@ -138,8 +133,8 @@ class ListBox(Window):
             cmd = self.data[i]
             t.append(
                 (
-                    yc.theme.marker_color,
-                    cmd.marker if hasattr(cmd, "marker") else yc.theme.default_marker,  # type: ignore
+                    theme.marker_color,
+                    cmd.marker if hasattr(cmd, "marker") else theme.default_marker,  # type: ignore
                 )
             )
             try:
@@ -152,7 +147,7 @@ class ListBox(Window):
             else:
                 t.append(
                     (
-                        f"{yc.theme.highlight_color} bold underline"
+                        f"{theme.highlight_color} bold underline"
                         if selected_idx == i
                         else "",
                         s,
@@ -188,7 +183,7 @@ class StoppableThread(threading.Thread):
             self._app.update([])
             return
 
-        queue: "multiprocessing.Queue[yc.BaseCommand]" = multiprocessing.Queue()
+        queue: "multiprocessing.Queue[BaseCommand]" = multiprocessing.Queue()
         proc = multiprocessing.Process(
             target=self.chief_commander.order, args=(keywords, queue)
         )
@@ -224,6 +219,7 @@ class YCApplication(Application[None]):
         self.listdata = ListBoxData()
         self._chief_commander = chief_commander
         self._max_num = 2
+        self.terminal_size = (width, height)
         root_container = self._init_ui(width, height)
         super().__init__(
             layout=Layout(root_container),
@@ -237,62 +233,62 @@ class YCApplication(Application[None]):
     def get_line_prefix(self, line_num, wrap_count):
         num_cmds = len(self.listdata)
         if num_cmds == 0:
-            prompt = yc.theme.searchbox.prompt
+            prompt = theme.searchbox.prompt
         else:
             idx = str(self.listdata.getSelected() + 1)
             num_cmds = str(num_cmds)
             self._max_num = max(self._max_num, len(idx), len(num_cmds))
-            prompt = f"{idx.rjust(self._max_num)}/{num_cmds.ljust(self._max_num)} {yc.theme.searchbox.prompt}"
-        return FormattedText([(yc.theme.highlight_color, prompt)])
+            prompt = f"{idx.rjust(self._max_num)}/{num_cmds.ljust(self._max_num)} {theme.searchbox.prompt}"
+        return FormattedText([(theme.highlight_color, prompt)])
 
     def _init_show_preview(self) -> AnyContainer:
-        if not yc.theme.preview.frame:
+        if not theme.preview.frame:
             return self.preview
         self.preview.width = cast(int, self.preview.width) - 2
         self.preview.height = cast(int, self.preview.height) - 2
         return Frame(
             self.preview,
-            style=f"bg:{yc.theme.preview.bg_color} fg:{yc.theme.preview.frame_color}",
+            style=f"bg:{theme.preview.bg_color} fg:{theme.preview.frame_color}",
         )
 
     def _init_narrow(self, width: int, height: int) -> Container:
-        if height < yc.theme.narrow_height:
+        if height < theme.narrow_height:
             raise RuntimeError(
-                f"This terminal is too short {height} < {yc.theme.narrow_height}"
+                f"This terminal is too short {height} < {theme.narrow_height}"
             )
 
         self.preview = Preview(
             width=width,
-            height=yc.theme.preview.narrow_height,
-            style=f"bg:{yc.theme.preview.bg_color}",
+            height=theme.preview.narrow_height,
+            style=f"bg:{theme.preview.bg_color}",
             debug_mode=self.debug_mode,
         )
         self.listbox = ListBox(
             width=width,
-            height=yc.theme.narrow_height - self.preview.height,
+            height=theme.narrow_height - self.preview.height,
             data=self.listdata,
-            style=f"bg:{yc.theme.listbox.bg_color}",
+            style=f"bg:{theme.listbox.bg_color}",
         )
         root_container = HSplit([self._init_show_preview(), self.textbox, self.listbox])
         self.layout_mode = "narrow"
         return root_container
 
     def _init_wide(self, width: int, height: int) -> Container:
-        if height < yc.theme.wide_height:
+        if height < theme.wide_height:
             raise RuntimeError(
-                f"This terminal is too short {height} < {yc.theme.wide_height}"
+                f"This terminal is too short {height} < {theme.wide_height}"
             )
         self.preview = Preview(
             width=int(0.6 * width),
-            height=yc.theme.wide_height,
-            style=f"bg:{yc.theme.preview.bg_color}",
+            height=theme.wide_height,
+            style=f"bg:{theme.preview.bg_color}",
             debug_mode=self.debug_mode,
         )
         self.listbox = ListBox(
             width=width - cast(int, self.preview.width),
-            height=yc.theme.wide_height - 1,
+            height=theme.wide_height - 1,
             data=self.listdata,
-            style=f"bg:{yc.theme.listbox.bg_color}",
+            style=f"bg:{theme.listbox.bg_color}",
         )
 
         root_container = HSplit(
@@ -305,7 +301,7 @@ class YCApplication(Application[None]):
         return root_container
 
     def _init_ui(self, width: int, height: int) -> Container:
-        if width < yc.theme.max_narrow_width:
+        if width < theme.max_narrow_width:
             return self._init_narrow(width, height)
         else:
             return self._init_wide(width, height)
@@ -317,7 +313,7 @@ class YCApplication(Application[None]):
         self._draw_thread = StoppableThread(self, self._chief_commander)
         self._draw_thread.start()
 
-    def update(self, commands: Optional[List[yc.BaseCommand]] = None) -> None:
+    def update(self, commands: Optional[List[BaseCommand]] = None) -> None:
         if commands is not None:
             self.listdata.commands = commands
         self.listbox.update()
@@ -336,25 +332,6 @@ _color_depth = {
     4: ColorDepth.DEPTH_4_BIT,
     1: ColorDepth.DEPTH_1_BIT,
 }
-
-
-class DebugSoldier(yc.BaseCommand, yc.BaseCommander):
-    def __init__(self) -> None:
-        self.info: Dict[str, Any] = {"theme": yc.theme.to_dict()}
-        self.score = -1000
-
-    def order(self, keywords: List[str], queue) -> None:
-        if len(keywords) == 1 and keywords[0] == "debug":
-            queue.put(self)
-
-    def __str__(self) -> str:
-        return "Debug"
-
-    def preview(self) -> Dict[str, str]:
-        return {"print debug infomation": ""}
-
-    def result(self) -> None:
-        pprint(self.info)
 
 
 kb = KeyBindings()
@@ -402,7 +379,7 @@ def init_app(chief_commander, input=None, output=None):
         chief_commander,
         terminal_size.columns,
         terminal_size.lines,
-        color_depth=_color_depth[yc.theme.color_depth],
+        color_depth=_color_depth[theme.color_depth],
         input=input,
         output=output,
     )
@@ -410,18 +387,4 @@ def init_app(chief_commander, input=None, output=None):
     app.timeoutlen = 0.01
     bind_keys(app)
 
-    debug_cmd = DebugSoldier()
-    chief_commander.recruit(debug_cmd)
-    debug_cmd.info.update(
-        {
-            "config file": str(xdg.config_path / "yc_rc.py"),
-            "loading time (s)": {
-                "prompt_toolkit": load_prompt_toolkit_t,
-            },
-            "terminal size": terminal_size,
-            "file type viewer": yc.file_viewer,
-            "layout mode": app.layout_mode,
-        }
-    )
-    debug_cmd.info["loading time (s)"]["total"] = time.time() - _STARTUP_t0
     return app

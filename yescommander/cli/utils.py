@@ -19,13 +19,3 @@ def init_config_folder() -> None:
             print(fp.read())
         os.system(f"cp {init_cfg_path} {config_file}")
     exit()
-
-
-def copy_cmd(command) -> None:
-    import pyperclip  # type: ignore
-
-    content = command.copy_clipboard()
-    if len(content) > 0:
-        pyperclip.copy(content)
-        print("Copied")
-    return content
