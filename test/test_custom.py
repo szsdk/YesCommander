@@ -42,13 +42,13 @@ def test_custom_soldier():
     assert c.answer == "4"
 
 
-@pytest.mark.skipif(which("googler") is None, reason="Cannot find googler.")
-def test_custom_async():
-    import asyncio
-
-    from yc_googler import GooglerAsyncCommander
-
-    q = Queue()
-    gg = GooglerAsyncCommander()
-    asyncio.run(gg.order(["hello"], q))
-    q.get()
+# @pytest.mark.skipif(which("googler") is None, reason="Cannot find googler.")
+# def test_custom_async():
+#     import asyncio
+#
+#     from yc_googler import GooglerAsyncCommander
+#
+#     q = Queue()
+#     gg = GooglerAsyncCommander()
+#     asyncio.run(gg.order(["hello"], q))
+#     q.get()

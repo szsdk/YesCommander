@@ -1,16 +1,14 @@
-#!/usr/bin/env python
-
-"""
-This is the terminal interface of YesCommander.
-"""
-
-from __future__ import annotations
-
+import multiprocessing
+import shutil
+import sys
+import threading
 import time
+from functools import partial
+from pprint import pprint
+from queue import Empty
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 _STARTUP_t0 = time.time()
-
-
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.formatted_text import FormattedText
@@ -29,52 +27,8 @@ from prompt_toolkit.widgets import Frame
 
 load_prompt_toolkit_t = time.time() - _STARTUP_t0
 
-import multiprocessing
-import os
-import shutil
-import sys
-import threading
-from functools import partial
-from pprint import pprint
-from queue import Empty
-from typing import Any, Dict, List, Optional, Tuple, cast
-
 import yescommander as yc
 from yescommander import xdg
-
-multiprocessing.set_start_method("fork")
-
-
-sys.path.insert(0, str(xdg.config_path))
-
-
-def init_config_folder() -> None:
-    if not xdg.config_path.exists():
-        xdg.config_path.mkdir(parents=True, exist_ok=True)
-    config_file = xdg.config_path / "yc_rc.py"
-
-    if not config_file.exists():
-        import pkg_resources
-
-        init_cfg_path = pkg_resources.resource_filename(
-            "yescommander", "example/yc_rc.py"
-        )
-        print(f"==== initalize {str(config_file)} ====")
-        with open(init_cfg_path, "r") as fp:
-            print(fp.read())
-        os.system(f"cp {init_cfg_path} {config_file}")
-    exit()
-
-
-load_rc_t0 = time.time()
-try:
-    import yc_rc
-except ModuleNotFoundError as e:
-    if "yc_rc" in str(e):
-        init_config_folder()
-    else:
-        raise e
-load_rc_t = time.time() - load_rc_t0
 
 
 class Preview(Window):
@@ -212,8 +166,11 @@ class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
     regularly for the stopped() condition."""
 
-    def __init__(self, app: "YCApplication", *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, app: "YCApplication", chief_commander, *args: Any, **kwargs: Any
+    ) -> None:
         super(StoppableThread, self).__init__(*args, **kwargs)
+        self.chief_commander = chief_commander
         self._stop_event = threading.Event()
         self._app = app
 
@@ -233,7 +190,7 @@ class StoppableThread(threading.Thread):
 
         queue: "multiprocessing.Queue[yc.BaseCommand]" = multiprocessing.Queue()
         proc = multiprocessing.Process(
-            target=yc_rc.chief_commander.order, args=(keywords, queue)
+            target=self.chief_commander.order, args=(keywords, queue)
         )
         proc.start()
         cmds = []
@@ -253,7 +210,7 @@ class StoppableThread(threading.Thread):
 
 
 class YCApplication(Application[None]):
-    def __init__(self, width: int, height: int, **kargs: Any) -> None:
+    def __init__(self, chief_commander, width: int, height: int, **kargs: Any) -> None:
         self.textbox_buffer = Buffer(
             on_text_changed=self.searching_text_changed,
             multiline=False,
@@ -265,6 +222,7 @@ class YCApplication(Application[None]):
         )
         self.debug_mode = "--debug" in sys.argv
         self.listdata = ListBoxData()
+        self._chief_commander = chief_commander
         self._max_num = 2
         root_container = self._init_ui(width, height)
         super().__init__(
@@ -274,7 +232,7 @@ class YCApplication(Application[None]):
             erase_when_done=True,
             **kargs,
         )
-        self._draw_thread = StoppableThread(self)
+        self._draw_thread = StoppableThread(self, self._chief_commander)
 
     def get_line_prefix(self, line_num, wrap_count):
         num_cmds = len(self.listdata)
@@ -356,7 +314,7 @@ class YCApplication(Application[None]):
         self._draw_thread.stop()
         if self._draw_thread.is_alive():
             self._draw_thread.join()
-        self._draw_thread = StoppableThread(self)
+        self._draw_thread = StoppableThread(self, self._chief_commander)
         self._draw_thread.start()
 
     def update(self, commands: Optional[List[yc.BaseCommand]] = None) -> None:
@@ -437,10 +395,11 @@ def bind_keys(app):
         kb.add(keys)(previous_1)
 
 
-def init_app(input=None, output=None):
+def init_app(chief_commander, input=None, output=None):
     terminal_size = shutil.get_terminal_size((80, 20))
 
     app = YCApplication(
+        chief_commander,
         terminal_size.columns,
         terminal_size.lines,
         color_depth=_color_depth[yc.theme.color_depth],
@@ -452,13 +411,12 @@ def init_app(input=None, output=None):
     bind_keys(app)
 
     debug_cmd = DebugSoldier()
-    yc_rc.chief_commander.recruit(debug_cmd)
+    chief_commander.recruit(debug_cmd)
     debug_cmd.info.update(
         {
             "config file": str(xdg.config_path / "yc_rc.py"),
             "loading time (s)": {
                 "prompt_toolkit": load_prompt_toolkit_t,
-                "rc": load_rc_t,
             },
             "terminal size": terminal_size,
             "file type viewer": yc.file_viewer,
@@ -467,34 +425,3 @@ def init_app(input=None, output=None):
     )
     debug_cmd.info["loading time (s)"]["total"] = time.time() - _STARTUP_t0
     return app
-
-
-def copy_cmd(command) -> None:
-    import pyperclip  # type: ignore
-
-    content = command.copy_clipboard()
-    if len(content) > 0:
-        pyperclip.copy(content)
-        print("Copied")
-    return content
-
-
-def main(app) -> None:
-    command, action = app.run()
-    if command is None:
-        return
-    if action == "run":
-        return command.result()
-    if action == "copy":
-        return copy_cmd(command)
-
-
-if __name__ == "__main__":
-    if (len(sys.argv) == 1) or ((len(sys.argv) == 2) and (sys.argv[1] == "--debug")):
-        app = init_app()
-        main(app)
-    else:
-        if hasattr(yc_rc, "main"):
-            yc_rc.main()
-        else:
-            print("Cannot find `main` function from you `yc_rc.py`.")

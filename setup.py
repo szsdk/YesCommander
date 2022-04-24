@@ -5,7 +5,11 @@ setup(
     version="0.1",
     author="szsdk",
     packages=["yescommander"],
-    scripts=["scripts/yc"],
+    entry_points={
+        "console_scripts": [
+            "yc = yescommander.cli:_main",
+        ],
+    },
     install_requires=["prompt_toolkit", "pyperclip"],
     tests_requires=["pytest"],
     data_files=[("example", ["yescommander/example/yc_rc.py"])],
