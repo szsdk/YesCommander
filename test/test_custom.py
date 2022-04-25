@@ -4,11 +4,10 @@ from shutil import which
 import pytest
 
 import yescommander as yc
-from yescommander import builtin
 
 
 def test_custom_soldier():
-    c = builtin.CalculatorSoldier()
+    c = yc.CalculatorSoldier()
     q = Queue()
     c.order(["1+" "3"], q)
     assert c.answer == "4"

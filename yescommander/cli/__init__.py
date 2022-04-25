@@ -15,7 +15,7 @@ import sys
 import yescommander as yc
 
 from .. import copy_command, file_viewer, xdg
-from ..builtin import DebugSoldier
+from ..commander import DebugSoldier
 from .utils import init_config_folder
 
 multiprocessing.set_start_method("fork")

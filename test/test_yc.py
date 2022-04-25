@@ -9,6 +9,7 @@ from prompt_toolkit.output import DummyOutput
 from yescommander import xdg
 
 xdg.config_path = Path(__file__).parent / "yc_config"
+
 import yc_rc
 
 from yescommander.cli import init_app
