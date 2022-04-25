@@ -16,6 +16,7 @@ import yescommander as yc
 
 from .. import copy_command, file_viewer, xdg
 from ..commander import DebugSoldier
+from ..theme import theme
 from .utils import init_config_folder
 
 multiprocessing.set_start_method("fork")
@@ -42,6 +43,7 @@ def cli_main(chief_commander) -> None:
 
     debug_cmd = DebugSoldier()
     chief_commander.recruit(debug_cmd)
+    debug_cmd.info["theme"] = theme.to_dict()
     debug_cmd.info.update(
         {
             "config file": str(xdg.config_path / "yc_rc.py"),

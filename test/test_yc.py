@@ -10,9 +10,7 @@ from yescommander import xdg
 
 xdg.config_path = Path(__file__).parent / "yc_config"
 
-import yc_rc
-
-from yescommander.cli import init_app
+from yescommander.cli import init_app, yc_rc
 
 
 def _typing_down(inp, n, end):

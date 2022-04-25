@@ -13,7 +13,6 @@ from queue import Queue
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
 from .core import BaseAsyncCommander, BaseCommand, BaseCommander
-from .theme import theme
 from .xdg import cache_path
 
 __all__ = [
@@ -258,7 +257,7 @@ class RunAsyncCommander(BaseCommander):
 
 class DebugSoldier(BaseCommand, BaseCommander):
     def __init__(self) -> None:
-        self.info: Dict[str, Any] = {"theme": theme.to_dict()}
+        self.info: Dict[str, Any] = dict()
         self.score = -1000
 
     def order(self, keywords: List[str], queue) -> None:
