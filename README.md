@@ -271,6 +271,15 @@ class BaseAsyncCommander:
         raise NotImplementedError()
 ```
 
+## Built-in commanders
+- `CalculatorSoldier`
+- `Commander`
+- `DebugSoldier`
+- `FileSoldier`
+- `RunSoldier`
+- `Soldier`
+- `RunAsyncCommander`
+
 # TODO
 - add examples: calculator, googler
 - add mechanism about main function
