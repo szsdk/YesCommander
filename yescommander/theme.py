@@ -20,11 +20,12 @@ class Theme:
 
 
 theme = Theme()
-theme.marker_color = ""
+theme.marker_color = "ansimagenta"
 theme.preview = Theme()
-theme.preview.bg_color = ""
-theme.preview.title_color = ""
-theme.preview.frame_color = "black"
+theme.preview.bg_color = "ansigray"
+theme.preview.title_color = "ansired"
+theme.preview.fg_color = "ansiblack"
+theme.preview.frame_color = "ansiblack"
 theme.preview.frame = True
 theme.preview.narrow_height = 8  # Used for narrow layout
 theme.searchbox = Theme()
@@ -32,10 +33,10 @@ theme.searchbox.prompt = "> "
 theme.default_marker = "- "
 theme.listbox = Theme()
 theme.listbox.ratio = 0.4
-theme.listbox.highlight_color = ""
+theme.listbox.highlight_color = "ansiyellow"
 theme.listbox.bg_color = ""
 theme.max_narrow_width = 80
 theme.wide_height = 20
 theme.narrow_height = 20
-theme.highlight_color = "grey"
+theme.highlight_color = "ansibrightred"
 theme.color_depth = 24

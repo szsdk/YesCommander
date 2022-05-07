@@ -260,7 +260,7 @@ class YCApplication(Application[None]):
         self.preview = Preview(
             width=width,
             height=theme.preview.narrow_height,
-            style=f"bg:{theme.preview.bg_color}",
+            style=f"bg:{theme.preview.bg_color} fg:{theme.preview.fg_color}",
             debug_mode=self.debug_mode,
         )
         self.listbox = ListBox(
