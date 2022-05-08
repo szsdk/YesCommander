@@ -147,7 +147,7 @@ class ListBox(Window):
             else:
                 t.append(
                     (
-                        f"{theme.highlight_color} bold underline"
+                        f"{theme.listbox.highlight_color} bold underline"
                         if selected_idx == i
                         else "",
                         s,
@@ -214,6 +214,7 @@ class YCApplication(Application[None]):
             content=BufferControl(buffer=self.textbox_buffer),
             height=1,
             get_line_prefix=self.get_line_prefix,
+            style=f"bg:{theme.searchbox.bg_color}",
         )
         self.debug_mode = "--debug" in sys.argv
         self.listdata = ListBoxData()
@@ -239,7 +240,7 @@ class YCApplication(Application[None]):
             num_cmds = str(num_cmds)
             self._max_num = max(self._max_num, len(idx), len(num_cmds))
             prompt = f"{idx.rjust(self._max_num)}/{num_cmds.ljust(self._max_num)} {theme.searchbox.prompt}"
-        return FormattedText([(theme.highlight_color, prompt)])
+        return FormattedText([(theme.searchbox.prompt_color, prompt)])
 
     def _init_show_preview(self) -> AnyContainer:
         if not theme.preview.frame:

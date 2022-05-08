@@ -1,6 +1,6 @@
 # YesCommander
 
-This is a python-based command snippet tool.
+YesCommander is a fully customizable command line searching interface.
 
 ## Install
 
@@ -68,7 +68,6 @@ The layout of the `yc` consists of three parts:
 There is a global variable `theme` in the `yescommander` library. You could try to put the
 following code into your `yc_rc.py` to prettify your `yc` program.
 ```python
-yc.theme.highlight_color = "#c84646"
 yc.theme.marker_color = "#e18d01"
 yc.RunSoldier.marker = " "
 yc.theme.default_marker = "⚒ "
@@ -281,6 +280,5 @@ class BaseAsyncCommander:
 - `RunAsyncCommander`
 
 # TODO
-- add examples: calculator, googler
 - add mechanism about main function
 - file_viewer
