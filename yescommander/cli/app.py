@@ -373,24 +373,12 @@ def bind_keys(app):
         kb.add(keys)(previous_1)
 
 
-def get_terminal_size():
-    col = os.environ.get("COLUMNS", None)
-    lin = os.environ.get("LINES", None)
-    if col is not None and lin is not None:
-        return int(col), int(lin)
-    ts = shutil.get_terminal_size((80, 20))
-    return (
-        ts[0] if col is None else int(col),
-        ts[1] if lin is None else int(lin),
-    )
-
-
 def init_app(chief_commander, input=None, output=None):
-    columns, lines = get_terminal_size()
+    terminal_size = shutil.get_terminal_size((80, 20))
     app = YCApplication(
         chief_commander,
-        columns,
-        lines,
+        terminal_size.columns,
+        terminal_size.lines,
         color_depth=_color_depth[theme.color_depth],
         input=input,
         output=output,
