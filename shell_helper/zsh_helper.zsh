@@ -8,3 +8,5 @@ yc_widget () {
         rm $_YC_PIPE
     fi
 }
+
+zle -N yc_widget
