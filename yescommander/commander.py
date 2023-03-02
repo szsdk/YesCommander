@@ -73,12 +73,10 @@ def inject_command(cmd: str) -> None:
     """
     Inject `cmd` to command line.
     """
-    import fcntl
-    import sys
-    import termios
-
-    for c in cmd:
-        fcntl.ioctl(sys.stdin, termios.TIOCSTI, c.encode())
+    if not "_YC_PIPE" in os.environ:
+        return print(cmd)
+    with open(os.environ["_YC_PIPE"], "w") as fp:
+        print(cmd, file=fp)
 
 
 def copy_command(command) -> None:

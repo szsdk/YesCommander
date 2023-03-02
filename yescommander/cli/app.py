@@ -1,5 +1,6 @@
 import multiprocessing
 import shutil
+import os
 import sys
 import threading
 import time
@@ -176,7 +177,6 @@ class StoppableThread(threading.Thread):
         return self._stop_event.is_set()
 
     def run(self) -> None:
-
         searching_text = self._app.textbox_buffer.text
         keywords = searching_text.strip().split(" ")
         if len(searching_text.strip()) == 0:
@@ -373,13 +373,24 @@ def bind_keys(app):
         kb.add(keys)(previous_1)
 
 
-def init_app(chief_commander, input=None, output=None):
-    terminal_size = shutil.get_terminal_size((80, 20))
+def get_terminal_size():
+    col = os.environ.get("COLUMNS", None)
+    lin = os.environ.get("LINES", None)
+    if col is not None and lin is not None:
+        return int(col), int(lin)
+    ts = shutil.get_terminal_size((80, 20))
+    return (
+        ts[0] if col is None else int(col),
+        ts[1] if lin is None else int(lin),
+    )
 
+
+def init_app(chief_commander, input=None, output=None):
+    columns, lines = get_terminal_size()
     app = YCApplication(
         chief_commander,
-        terminal_size.columns,
-        terminal_size.lines,
+        columns,
+        lines,
         color_depth=_color_depth[theme.color_depth],
         input=input,
         output=output,
